@@ -1,7 +1,5 @@
 package com.example.demo.dtos;
 
-
-import com.example.demo.dtos.validators.annotation.AgeLimit;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
@@ -14,26 +12,36 @@ public class UserDetailsDTO {
 
     @NotBlank(message = "name is required")
     private String name;
-    @NotBlank(message = "address is required")
-    private String address;
+
+    @NotBlank(message = "email is required")
+    private String email;
+
     @NotNull(message = "age is required")
-    @AgeLimit(value = 18)
     private Integer age;
+
+    @NotBlank(message = "role is required")
+    private String role;
+
+    private UUID credentialId;
 
     public UserDetailsDTO() {
     }
 
-    public UserDetailsDTO(String name, String address, int age) {
+    public UserDetailsDTO(String name, String email, int age, String role,UUID credentialId) {
         this.name = name;
-        this.address = address;
+        this.email = email;
         this.age = age;
+        this.role = role;
+        this.credentialId = credentialId;
     }
 
-    public UserDetailsDTO(UUID id, String name, String address, int age) {
+    public UserDetailsDTO(UUID id, String name, String email, int age, String role, UUID credentialId) {
         this.id = id;
         this.name = name;
-        this.address = address;
+        this.email = email;
         this.age = age;
+        this.role = role;
+        this.credentialId = credentialId;
     }
 
     public UUID getId() {
@@ -52,12 +60,12 @@ public class UserDetailsDTO {
         this.name = name;
     }
 
-    public String getAddress() {
-        return address;
+    public String getEmail() {
+        return email;
     }
 
-    public void setAddress(String address) {
-        this.address = address;
+    public void setAddress(String email) {
+        this.email = email;
     }
 
     public int getAge() {
@@ -68,6 +76,21 @@ public class UserDetailsDTO {
         this.age = age;
     }
 
+    public String getRole() {
+        return role;
+    }
+
+    public void setRole(String role) {
+        this.role = role;
+    }
+
+    public UUID getCredentialId() {
+        return credentialId;
+    }
+    public void setCredentialId(UUID credentialId) {
+        this.credentialId = credentialId;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -75,11 +98,11 @@ public class UserDetailsDTO {
         UserDetailsDTO that = (UserDetailsDTO) o;
         return Objects.equals(age, that.age) &&
                 Objects.equals(name, that.name) &&
-                Objects.equals(address, that.address);
+                Objects.equals(email, that.email);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(name, address, age);
+        return Objects.hash(name, email, age);
     }
 }

@@ -38,12 +38,13 @@ public class DataInitializer implements CommandLineRunner {
                 userPayload.put("name", "Admin");
                 userPayload.put("age", 30);
                 userPayload.put("email", "admin@system.com");
+                userPayload.put("role", "ADMIN");
                 userPayload.put("credentialId", saved.getId());
 
                 restTemplate.postForObject(userServiceUrl, userPayload, Void.class);
                 System.out.println("Default admin profile created in user service.");
             } catch (Exception e) {
-                System.err.println("⚠️ Failed to create admin user in user service: " + e.getMessage());
+                System.err.println("Failed to create admin user in user service: " + e.getMessage());
             }
         }
     }

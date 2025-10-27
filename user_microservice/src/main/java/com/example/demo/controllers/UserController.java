@@ -40,6 +40,12 @@ public class UserController {
         return ResponseEntity.created(location).build();
     }
 
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteUser(@PathVariable UUID id) {
+        userService.delete(id);
+        return ResponseEntity.noContent().build();
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<UserDetailsDTO> getPerson(@PathVariable UUID id) {
         return ResponseEntity.ok(userService.findPersonById(id));

@@ -27,11 +27,17 @@ function Dashboard() {
     const fetchUsers = async () => {
         try {
             const res = await api.get("/users");
-            setUsers(res.data);
+
+            const filteredUsers = res.data.filter(
+                (u) => !(u.name?.toLowerCase() === "admin")
+            );
+
+            setUsers(filteredUsers);
         } catch (err) {
             console.error("Failed to load users", err);
         }
     };
+
 
     const fetchDevices = async () => {
         try {
@@ -69,19 +75,44 @@ function Dashboard() {
     const handleAdd = async () => {
         try {
             if (modalType === "user") {
-                await api.post("/users", formData);
+                const credentialRes = await api.post("/auth/register", {
+                    username: formData.username,
+                    password: formData.password,
+                    role: formData.role,
+                });
+
+                const credentialId = credentialRes.data.id;
+
+                const userPayload = {
+                    name: formData.name,
+                    age: parseInt(formData.age),
+                    email: formData.email,
+                    role: formData.role,
+                    credentialId: credentialId,
+                };
+
+                await api.post("/users", userPayload);
                 fetchUsers();
+
+                alert("Added successfully!");
+                setShowModal(false);
             } else if (modalType === "device") {
-                await api.post("/device", formData);
+                await api.post("/device", {
+                    name: formData.name,
+                    description: formData.description,
+                    maxConsumption: parseFloat(formData.maxConsumption),
+                    location: formData.location,
+                });
                 fetchDevices();
+                alert("Device added successfully!");
+                setShowModal(false);
             }
-            alert("Added successfully!");
-            setShowModal(false);
         } catch (err) {
-            console.error("Error adding:", err);
-            alert("Failed to add item");
+            console.error("Error adding:", err.response?.data || err);
+            alert("Failed to add item: " + (err.response?.data?.message || "Check backend logs"));
         }
     };
+
 
     const handleDelete = async (type, id) => {
         const confirmed = window.confirm("Are you sure you want to delete this?");
@@ -91,16 +122,18 @@ function Dashboard() {
             if (type === "user") {
                 await api.delete(`/users/${id}`);
                 fetchUsers();
-            } else {
+            } else if (type === "device") {
                 await api.delete(`/device/${id}`);
                 fetchDevices();
             }
+
             alert("Deleted successfully!");
         } catch (err) {
-            console.error("Error deleting:", err);
-            alert("Failed to delete item");
+            console.error("Error deleting:", err.response?.data || err);
+            alert("Failed to delete item: " + (err.response?.data?.message || "Check backend logs"));
         }
     };
+
 
     return (
         <div className="dashboard">
@@ -160,21 +193,31 @@ function Dashboard() {
                         <tr>
                             <th>ID</th>
                             <th>Name</th>
-                            <th>Max Consumption</th>
+                            <th>Description</th>
+                            <th>Consumption</th>
+                            <th>Location</th>
                             <th>Actions</th>
                         </tr>
                         </thead>
                         <tbody>
-                        {devices.map((d) => (
-                            <tr key={d.id}>
-                                <td>{d.id}</td>
-                                <td>{d.name}</td>
-                                <td>{d.maxConsumption}</td>
-                                <td>
-                                    <button className="delete-btn" onClick={() => handleDelete("device", d.id)}>Delete</button>
-                                </td>
+                        {devices.length === 0 ? (
+                            <tr>
+                                <td colSpan={6} className="empty-cell">No devices found</td>
                             </tr>
-                        ))}
+                        ) : (
+                            devices.map(d => (
+                                <tr key={d.id}>
+                                    <td>{d.id}</td>
+                                    <td>{d.name}</td>
+                                    <td>{d.description}</td>
+                                    <td>{d.maxConsumption}</td>
+                                    <td>{d.location}</td>
+                                    <td>
+                                        <button className="delete-btn" onClick={() => handleDelete("device", d.id)}>Delete</button>
+                                    </td>
+                                </tr>
+                            ))
+                        )}
                         </tbody>
                     </table>
                 </div>
@@ -212,11 +255,19 @@ function Dashboard() {
                                 <input name="email" placeholder="Email" type="email" onChange={handleInputChange} />
                                 <input name="username" placeholder="Username" onChange={handleInputChange} />
                                 <input name="password" placeholder="Password" type="password" onChange={handleInputChange} />
+
+                                <select name="role" onChange={handleInputChange} defaultValue="">
+                                    <option value="" disabled>Select Role</option>
+                                    <option value="ADMIN">Admin</option>
+                                    <option value="CLIENT">Client</option>
+                                </select>
                             </>
                         ) : (
                             <>
                                 <input name="name" placeholder="Device Name" onChange={handleInputChange} />
-                                <input name="maxConsumption" placeholder="Max Consumption" type="number" onChange={handleInputChange} />
+                                <input name="description" placeholder="Description" onChange={handleInputChange} />
+                                <input name="maxConsumption" placeholder="Consumption" type="number" onChange={handleInputChange} />
+                                <input name="location" placeholder="Location" onChange={handleInputChange} />
                             </>
                         )}
 

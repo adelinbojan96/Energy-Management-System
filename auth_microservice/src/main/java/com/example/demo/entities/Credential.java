@@ -3,13 +3,15 @@ package com.example.demo.entities;
 import com.example.demo.security.Role;
 import jakarta.persistence.*;
 
+import java.util.UUID;
+
 @Entity
 @Table(name = "credentials")
 public class Credential {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Integer id;
+    @GeneratedValue(strategy = GenerationType.UUID)
+    private UUID id;
 
     @Column(nullable = false, unique = true)
     private String username;
@@ -29,8 +31,8 @@ public class Credential {
         this.role = role;
     }
 
-    public Integer getId() { return id; }
-    public void setId(Integer id) { this.id = id; }
+    public UUID getId() { return id; }
+    public void setId(UUID id) { this.id = id; }
 
     public String getUsername() { return username; }
     public void setUsername(String username) { this.username = username; }

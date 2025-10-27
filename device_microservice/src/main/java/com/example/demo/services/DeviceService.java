@@ -14,6 +14,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
@@ -33,20 +34,43 @@ public class DeviceService {
                 .collect(Collectors.toList());
     }
 
-    public DeviceDetailsDTO findPersonById(Integer id) {
+    public DeviceDetailsDTO findDeviceById(UUID id) {
         Optional<Device> prosumerOptional = deviceRepository.findById(id);
         if (prosumerOptional.isEmpty()) {
-            LOGGER.error("Person with id {} was not found in db", id);
+            LOGGER.error("Device with id {} was not found in db", id);
             throw new ResourceNotFoundException(Device.class.getSimpleName() + " with id: " + id);
         }
         return DeviceBuilder.toDeviceDetailsDTO(prosumerOptional.get());
     }
 
-    public Integer insert(DeviceDetailsDTO personDTO) {
+    public UUID insert(DeviceDetailsDTO personDTO) {
         Device device = DeviceBuilder.toEntity(personDTO);
         device = deviceRepository.save(device);
         LOGGER.debug("Person with id {} was inserted in db", device.getId());
         return device.getId();
     }
 
+    public void delete(UUID id) {
+        Optional<Device> deviceOptional = deviceRepository.findById(id);
+        if (deviceOptional.isEmpty()) {
+            LOGGER.error("Device with id {} not found", id);
+            throw new ResourceNotFoundException(Device.class.getSimpleName() + " with id: " + id);
+        }
+
+        deviceRepository.deleteById(id);
+        LOGGER.info("Deleted device with id {}", id);
+    }
+
+    public void assignDeviceToUser(UUID deviceId, UUID userId) {
+        Optional<Device> deviceOptional = deviceRepository.findById(deviceId);
+        if (deviceOptional.isEmpty()) {
+            LOGGER.error("Device with the id {} not found", deviceId);
+            throw new ResourceNotFoundException(Device.class.getSimpleName() + " with id: " + deviceId);
+        }
+
+        Device device = deviceOptional.get();
+        device.setUserId(userId);
+        deviceRepository.save(device);
+        LOGGER.info("Assigned device with id {} to user with id {}", deviceId, userId);
+    }
 }

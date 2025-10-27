@@ -24,7 +24,6 @@ public class GatewayConfig {
                 .route("user_microservice", r -> r
                         .path("/api/users/**")
                         .filters(f -> f
-                                // forward exactly as-is, no rewrite
                                 .stripPrefix(1)
                                 .dedupeResponseHeader("Access-Control-Allow-Origin", "RETAIN_FIRST")
                                 .dedupeResponseHeader("Access-Control-Allow-Credentials", "RETAIN_FIRST")

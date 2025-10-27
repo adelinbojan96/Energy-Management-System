@@ -26,51 +26,63 @@ public class User implements Serializable{
     @Column(name = "name", nullable = false)
     private String name;
 
-    @Column(name = "address", nullable = false)
-    private String address;
+    @Column(name = "email", nullable = false)
+    private String email;
 
     @Column(name = "age", nullable = false)
     private int age;
 
+    @Column(name = "role", nullable = false)
+    private String role;
 
-    public User() {
-    }
+    @Column(name = "credential_id", nullable = false)
+    private UUID credentialId;
 
-    public User(String name, String address, int age) {
+    public User(UUID id, String name, String email, int age, String role, UUID credentialId) {
+        this.id = id;
         this.name = name;
-        this.address = address;
+        this.email = email;
         this.age = age;
+        this.role = role;
+        this.credentialId = credentialId;
     }
+    public User() {}
 
     public UUID getId() {
         return id;
     }
-
     public void setId(UUID id) {
         this.id = id;
     }
-
     public String getName() {
         return name;
     }
-
     public void setName(String name) {
         this.name = name;
     }
-
-    public String getAddress() {
-        return address;
+    public String getEmail() {
+        return email;
     }
-
-    public void setAddress(String address) {
-        this.address = address;
+    public void setEmail(String email) {
+        this.email = email;
     }
-
     public int getAge() {
         return age;
     }
-
     public void setAge(int age) {
         this.age = age;
     }
+    public String getRole() {
+        return role;
+    }
+    public void setRole(String role) {
+        this.role = role;
+    }
+    public UUID getCredentialId() {
+        return credentialId;
+    }
+    public void setCredentialId(UUID credentialId) {
+        this.credentialId = credentialId;
+    }
+
 }

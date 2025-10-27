@@ -4,10 +4,11 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
 import java.util.Objects;
+import java.util.UUID;
 
 public class DeviceDetailsDTO {
 
-    private Integer id;
+    private UUID id;
 
     @NotBlank(message = "Name is required")
     private String name;
@@ -19,12 +20,12 @@ public class DeviceDetailsDTO {
 
     private String location;
 
-    private Integer userId;
+    private UUID userId;
 
     public DeviceDetailsDTO() {
     }
 
-    public DeviceDetailsDTO(Integer id, String name, String description, Double maxConsumption, String location, Integer userId) {
+    public DeviceDetailsDTO(UUID id, String name, String description, Double maxConsumption, String location, UUID userId) {
         this.id = id;
         this.name = name;
         this.description = description;
@@ -33,7 +34,7 @@ public class DeviceDetailsDTO {
         this.userId = userId;
     }
 
-    public DeviceDetailsDTO(String name, String description, Double maxConsumption, String location, Integer userId) {
+    public DeviceDetailsDTO(String name, String description, Double maxConsumption, String location, UUID userId) {
         this.name = name;
         this.description = description;
         this.maxConsumption = maxConsumption;
@@ -41,54 +42,42 @@ public class DeviceDetailsDTO {
         this.userId = userId;
     }
 
-    public Integer getId() {
+    public UUID getId() {
         return id;
     }
-
-    public void setId(Integer id) {
+    public void setId(UUID id) {
         this.id = id;
     }
-
     public String getName() {
         return name;
     }
-
     public void setName(String name) {
         this.name = name;
     }
-
     public String getDescription() {
         return description;
     }
-
     public void setDescription(String description) {
         this.description = description;
     }
-
     public Double getMaxConsumption() {
         return maxConsumption;
     }
-
     public void setMaxConsumption(Double maxConsumption) {
         this.maxConsumption = maxConsumption;
     }
-
     public String getLocation() {
         return location;
     }
-
     public void setLocation(String location) {
         this.location = location;
     }
-
-    public Integer getUserId() {
+    public UUID getUserId() {
         return userId;
     }
-
-    public void setUserId(Integer userId) {
+    public void setUserId(UUID userId) {
         this.userId = userId;
     }
-
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;

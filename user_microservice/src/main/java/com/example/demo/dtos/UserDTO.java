@@ -7,10 +7,47 @@ public class UserDTO {
     private UUID id;
     private String name;
     private int age;
+    private String email;
+
+    public String getRole() {
+        return role;
+    }
+
+    public void setRole(String role) {
+        this.role = role;
+    }
+
+    public String getEmail() {
+        return email;
+    }
+
+    public void setEmail(String email) {
+        this.email = email;
+    }
+
+    public UUID getCredentialId() {
+        return credentialId;
+    }
+
+    public void setCredentialId(UUID credentialId) {
+        this.credentialId = credentialId;
+    }
+
+    private String role;
+    private UUID credentialId;
 
     public UserDTO() {}
     public UserDTO(UUID id, String name, int age) {
         this.id = id; this.name = name; this.age = age;
+    }
+
+    public UserDTO(UUID id, String name, String email, int age, String role, UUID credentialId) {
+        this.id = id;
+        this.name = name;
+        this.age = age;
+        this.email = email;
+        this.role = role;
+        this.credentialId = credentialId;
     }
 
     public UUID getId() { return id; }

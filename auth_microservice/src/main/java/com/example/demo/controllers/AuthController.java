@@ -8,6 +8,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Map;
+import java.util.UUID;
+
 @RestController
 @RequestMapping("/auth")
 @Validated
@@ -21,9 +24,9 @@ public class AuthController {
 
     // register
     @PostMapping("/register")
-    public ResponseEntity<String> register(@Valid @RequestBody CredentialDetailsDTO userDetails) {
-        authService.register(userDetails);
-        return ResponseEntity.ok("Credential registered successfully");
+    public ResponseEntity<Map<String, UUID>> register(@Valid @RequestBody CredentialDetailsDTO userDetails) {
+        UUID id = authService.register(userDetails);
+        return ResponseEntity.ok(Map.of("id", id));
     }
 
     // login
@@ -32,4 +35,12 @@ public class AuthController {
         String token = authService.login(loginRequest);
         return ResponseEntity.ok(token);  // return JWT token to frontend
     }
+
+    //  deletion
+    @DeleteMapping("/credentials/{id}")
+    public ResponseEntity<Void> deleteCredential(@PathVariable UUID id) throws Exception {
+        authService.delete(id);
+        return ResponseEntity.noContent().build();
+    }
+
 }

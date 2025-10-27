@@ -25,13 +25,13 @@ public class DeviceController {
     }
 
     @GetMapping
-    public ResponseEntity<List<DeviceDTO>> getUsers() {
+    public ResponseEntity<List<DeviceDTO>> getDevices() {
         return ResponseEntity.ok(deviceService.findDevices());
     }
 
     @PostMapping
-    public ResponseEntity<Void> create(@Valid @RequestBody DeviceDetailsDTO person) {
-        Integer id = deviceService.insert(person);
+    public ResponseEntity<Void> create(@Valid @RequestBody DeviceDetailsDTO device) {
+        UUID id = deviceService.insert(device);
         URI location = ServletUriComponentsBuilder
                 .fromCurrentRequest()
                 .path("/{id}")
@@ -40,8 +40,23 @@ public class DeviceController {
         return ResponseEntity.created(location).build();
     }
 
-    @GetMapping("/{id}")
-    public ResponseEntity<DeviceDetailsDTO> getDevice(@PathVariable Integer id) {
-        return ResponseEntity.ok(deviceService.findPersonById(id));
+    public record AssignRequest(UUID deviceId, UUID userId) {}
+
+    @PostMapping("/assign")
+    public ResponseEntity<Void> assignDeviceToUserPost(@Valid @RequestBody AssignRequest req) {
+        deviceService.assignDeviceToUser(req.deviceId(), req.userId());
+        return ResponseEntity.noContent().build();
     }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<DeviceDetailsDTO> getDevice(@PathVariable UUID id) {
+        return ResponseEntity.ok(deviceService.findDeviceById(id));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteDevice(@PathVariable UUID id) {
+        deviceService.delete(id);
+        return ResponseEntity.noContent().build();
+    }
+
 }

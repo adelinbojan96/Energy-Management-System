@@ -12,6 +12,4 @@ public interface DeviceRepository extends JpaRepository<Device, UUID> {
 
     @Query("SELECT u FROM Device u WHERE u.name = :name")
     Optional<Device> findByName(@Param("name") String name);
-
-    Optional<Device> findById(Integer id);
 }

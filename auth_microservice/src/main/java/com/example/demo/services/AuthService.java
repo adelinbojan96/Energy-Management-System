@@ -10,6 +10,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
+
+import java.util.Optional;
+import java.util.UUID;
 
 @Service
 public class AuthService {
@@ -26,11 +30,7 @@ public class AuthService {
         this.jwtUtil = jwtUtil;
     }
 
-    /**
-     * Handles user registration.
-     * Only admin or first-time startup logic should call this.
-     */
-    public void register(CredentialDetailsDTO dto) {
+    public UUID register(CredentialDetailsDTO dto) {
         if (credentialRepository.findByUsername(dto.getUsername()).isPresent()) {
             throw new RuntimeException("Username already exists");
         }
@@ -40,13 +40,11 @@ public class AuthService {
         credential.setPassword(passwordEncoder.encode(dto.getPassword()));
         credential.setRole(Role.valueOf(dto.getRole().toUpperCase()));
 
-        credentialRepository.save(credential);
+        Credential saved = credentialRepository.save(credential);
         LOGGER.info("Credential {} registered successfully as {}", credential.getUsername(), credential.getRole());
+        return saved.getId();
     }
 
-    /**
-     * Handles user login and returns a JWT token.
-     */
     public String login(CredentialDTO dto) {
         Credential credential = credentialRepository.findByUsername(dto.getUsername())
                 .orElseThrow(() -> new RuntimeException("Invalid username or password"));
@@ -58,4 +56,23 @@ public class AuthService {
         LOGGER.info("{} logged in as {}", credential.getUsername(), credential.getRole());
         return jwtUtil.generateToken(credential);
     }
+
+    public void delete(UUID id) throws Exception {
+        Optional<Credential> verifyCredential = credentialRepository.findById(id);
+
+        if (verifyCredential.isEmpty()) {
+            LOGGER.error("Credential with id {} was not found in db", id);
+            throw new Exception("Credential with id: " + id + " not found");
+        }
+
+        Credential credential = verifyCredential.get();
+        if ("admin".equalsIgnoreCase(credential.getUsername())) {
+            LOGGER.error("Attempted to delete admin credential with id {}", id);
+            throw new Exception("Cannot delete admin credential");
+        }
+
+        credentialRepository.deleteById(id);
+        LOGGER.info("Deleted credential with id {} and username {}", id, credential.getUsername());
+    }
+
 }

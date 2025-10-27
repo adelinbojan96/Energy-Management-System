@@ -10,16 +10,16 @@ public class UserBuilder {
     }
 
     public static UserDTO toPersonDTO(User user) {
-        return new UserDTO(user.getId(), user.getName(), user.getAge());
+        return new UserDTO(user.getId(), user.getName(), user.getEmail(), user.getAge(), user.getRole(), user.getCredentialId());
     }
 
     public static UserDetailsDTO toPersonDetailsDTO(User user) {
-        return new UserDetailsDTO(user.getId(), user.getName(), user.getAddress(), user.getAge());
+        return new UserDetailsDTO(user.getId(), user.getName(), user.getEmail(), user.getAge(), user.getRole(), user.getCredentialId());
     }
 
     public static User toEntity(UserDetailsDTO userDetailsDTO) {
-        return new User(userDetailsDTO.getName(),
-                userDetailsDTO.getAddress(),
-                userDetailsDTO.getAge());
+        return new User(userDetailsDTO.getId(), userDetailsDTO.getName(),
+                userDetailsDTO.getEmail(),
+                userDetailsDTO.getAge(), userDetailsDTO.getRole(), userDetailsDTO.getCredentialId());
     }
 }

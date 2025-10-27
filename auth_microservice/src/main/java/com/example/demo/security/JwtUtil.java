@@ -18,6 +18,7 @@ public class JwtUtil {
     public String generateToken(Credential credential) {
         return Jwts.builder()
                 .setSubject(credential.getUsername())
+                .claim("credentialId", credential.getId().toString())
                 .claim("role", credential.getRole().name())
                 .setIssuedAt(new Date())
                 .setExpiration(new Date(System.currentTimeMillis() + EXPIRATION_TIME))

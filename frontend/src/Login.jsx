@@ -20,9 +20,19 @@ function Login() {
                 username,
                 password,
             });
+
             const token = response.data;
             localStorage.setItem("token", token);
-            navigate("/dashboard");
+
+            const decoded = JSON.parse(atob(token.split(".")[1]));
+            const role = decoded.role || "CLIENT";
+
+            if (role === "ADMIN") {
+                navigate("/admin-dashboard");
+            } else {
+                navigate("/client-dashboard");
+            }
+
         } catch (err) {
             if (err.response && err.response.status === 401) {
                 setError("Invalid username or password");

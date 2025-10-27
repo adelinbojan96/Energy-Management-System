@@ -11,6 +11,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
 
 import java.util.List;
 import java.util.Optional;
@@ -36,7 +37,7 @@ public class UserService {
 
     public UserDetailsDTO findPersonById(UUID id) {
         Optional<User> prosumerOptional = userRepository.findById(id);
-        if (!prosumerOptional.isPresent()) {
+        if (prosumerOptional.isEmpty()) {
             LOGGER.error("Person with id {} was not found in db", id);
             throw new ResourceNotFoundException(User.class.getSimpleName() + " with id: " + id);
         }
@@ -48,6 +49,26 @@ public class UserService {
         user = userRepository.save(user);
         LOGGER.debug("Person with id {} was inserted in db", user.getId());
         return user.getId();
+    }
+    public void delete(UUID id) {
+        UserDetailsDTO user = findPersonById(id);
+
+        if ("admin".equalsIgnoreCase(user.getName())) {
+            LOGGER.warn("Attempted to delete admin user with id {}", id);
+            throw new IllegalArgumentException("Cannot delete admin user");
+        }
+
+        userRepository.deleteById(id);
+        LOGGER.info("User with id {} deleted from database", id);
+
+        try {
+            RestTemplate restTemplate = new RestTemplate();
+            String authServiceUrl = "http://localhost:8083/auth/credentials/" + user.getCredentialId();
+            restTemplate.delete(authServiceUrl);
+            LOGGER.info("Deleted associated credentials with id {}", user.getCredentialId());
+        } catch (Exception e) {
+            LOGGER.error("Failed to delete credentials for user {}: {}", id, e.getMessage());
+        }
     }
 
 }

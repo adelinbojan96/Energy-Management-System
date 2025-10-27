@@ -13,7 +13,9 @@ public class DeviceBuilder {
         return new DeviceDTO(
                 device.getId(),
                 device.getName(),
-                device.getMaxConsumption()
+                device.getDescription(),
+                device.getMaxConsumption(),
+                device.getLocation()
         );
     }
 

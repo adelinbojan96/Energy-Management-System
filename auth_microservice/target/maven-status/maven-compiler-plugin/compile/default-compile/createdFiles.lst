@@ -1,12 +1,13 @@
 com/example/demo/services/DataInitializer.class
-com/example/demo/repositories/UserRepository.class
 com/example/demo/config/CorsConfig$1.class
-com/example/demo/entities/User.class
-com/example/demo/dtos/UserDetailsDTO.class
-com/example/demo/dtos/UserDTO.class
+com/example/demo/repositories/CredentialRepository.class
+com/example/demo/config/PasswordConfig.class
+com/example/demo/dtos/CredentialDTO.class
+com/example/demo/dtos/CredentialDetailsDTO.class
 com/example/demo/security/JwtUtil.class
 com/example/demo/DemoApplication.class
 com/example/demo/config/SecurityConfig.class
+com/example/demo/entities/Credential.class
 com/example/demo/config/CorsConfig.class
 com/example/demo/controllers/AuthController.class
 com/example/demo/services/AuthService.class

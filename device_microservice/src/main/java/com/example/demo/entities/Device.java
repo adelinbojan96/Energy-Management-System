@@ -3,6 +3,7 @@ package com.example.demo.entities;
 import jakarta.persistence.*;
 import java.io.Serial;
 import java.io.Serializable;
+import java.util.UUID;
 
 @Entity
 @Table(name = "devices")
@@ -12,8 +13,8 @@ public class Device implements Serializable {
     private static final long serialVersionUID = 1L;
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Integer id;
+    @GeneratedValue(strategy = GenerationType.UUID)
+    private UUID id;
 
     @Column(name = "name", nullable = false, length = 100)
     private String name;
@@ -28,12 +29,12 @@ public class Device implements Serializable {
     private String location;
 
     @Column(name = "user_id")
-    private Integer userId;
+    private UUID userId;
 
     public Device() {
     }
 
-    public Device(String name, String description, Double maxConsumption, String location, Integer userId) {
+    public Device(String name, String description, Double maxConsumption, String location, UUID userId) {
         this.name = name;
         this.description = description;
         this.maxConsumption = maxConsumption;
@@ -41,11 +42,11 @@ public class Device implements Serializable {
         this.userId = userId;
     }
 
-    public Integer getId() {
+    public UUID getId() {
         return id;
     }
 
-    public void setId(Integer id) {
+    public void setId(UUID id) {
         this.id = id;
     }
 
@@ -81,11 +82,11 @@ public class Device implements Serializable {
         this.location = location;
     }
 
-    public Integer getUserId() {
+    public UUID getUserId() {
         return userId;
     }
 
-    public void setUserId(Integer userId) {
+    public void setUserId(UUID userId) {
         this.userId = userId;
     }
 }
