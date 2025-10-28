@@ -63,7 +63,7 @@ public class UserService {
 
         try {
             RestTemplate restTemplate = new RestTemplate();
-            String authServiceUrl = "http://localhost:8083/auth/credentials/" + user.getCredentialId();
+            String authServiceUrl = "http://auth-service:8083/auth/credentials/" + user.getCredentialId();
             restTemplate.delete(authServiceUrl);
             LOGGER.info("Deleted associated credentials with id {}", user.getCredentialId());
         } catch (Exception e) {

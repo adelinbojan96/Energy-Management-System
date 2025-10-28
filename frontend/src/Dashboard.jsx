@@ -161,7 +161,7 @@ function Dashboard() {
                         <thead>
                         <tr>
                             <th>ID</th>
-                            <th>Username</th>
+                            <th>Name</th>
                             <th>Age</th>
                             <th>Actions</th>
                         </tr>

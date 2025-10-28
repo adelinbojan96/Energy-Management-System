@@ -1,18 +1,11 @@
-FROM maven:3.9 AS build
+FROM maven:3.9-eclipse-temurin-21 AS build
+WORKDIR /build
+COPY pom.xml .
+COPY src ./src
+RUN mvn -q -DskipTests package
 
-ENV TZ=UTC
-RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
-ENV CATALINA_OPTS="-Duser.timezone=UTC"
-
-COPY ./pom.xml /demo/pom.xml
-WORKDIR /demo
-RUN mvn dependency:go-offline
-COPY ./src/ /demo/src
-WORKDIR /demo
-RUN mvn clean install -DskipTests
-
-FROM openjdk:25-jdk
-WORKDIR /demo
-COPY --from=build /demo/target/demo-0.0.1-SNAPSHOT.jar /demo/demo.jar
-EXPOSE 8080
-CMD ["java", "-jar", "demo.jar"]
+FROM eclipse-temurin:21-jre
+WORKDIR /app
+COPY --from=build /build/target/*.jar app.jar
+EXPOSE 8082
+ENTRYPOINT ["java", "-jar", "app.jar"]

@@ -18,7 +18,7 @@ public class GatewayConfig {
                                 .dedupeResponseHeader("Access-Control-Allow-Origin", "RETAIN_FIRST")
                                 .dedupeResponseHeader("Access-Control-Allow-Credentials", "RETAIN_FIRST")
                                 .dedupeResponseHeader("Access-Control-Expose-Headers", "RETAIN_FIRST"))
-                        .uri("http://localhost:8083"))
+                        .uri("http://auth-service:8083"))
 
                 // USERS
                 .route("user_microservice", r -> r
@@ -28,7 +28,12 @@ public class GatewayConfig {
                                 .dedupeResponseHeader("Access-Control-Allow-Origin", "RETAIN_FIRST")
                                 .dedupeResponseHeader("Access-Control-Allow-Credentials", "RETAIN_FIRST")
                                 .dedupeResponseHeader("Access-Control-Expose-Headers", "RETAIN_FIRST"))
-                        .uri("http://localhost:8081"))
+                        .uri("http://user-service:8081"))
+
+                .route("swagger_auth", r -> r
+                        .path("/api/auth/swagger-ui/**", "/api/auth/v3/api-docs/**")
+                        .filters(f -> f.rewritePath("/api/auth/(?<segment>.*)", "/auth/${segment}"))
+                        .uri("http://auth-service:8083"))
 
                 .route("device_microservice", r -> r
                         .path("/api/device/**")
@@ -37,7 +42,10 @@ public class GatewayConfig {
                                 .dedupeResponseHeader("Access-Control-Allow-Origin", "RETAIN_FIRST")
                                 .dedupeResponseHeader("Access-Control-Allow-Credentials", "RETAIN_FIRST")
                                 .dedupeResponseHeader("Access-Control-Expose-Headers", "RETAIN_FIRST"))
-                        .uri("http://localhost:8082"))
+                        .uri("http://device-service:8082"))
                 .build();
+
+
+
     }
 }

@@ -1,0 +1,23 @@
+entryPoints:
+  web:
+    address: ":80"
+
+api:
+  insecure: true  # Dashboard on :8080 (for debugging only)
+
+providers:
+  docker:
+    exposedByDefault: false
+    network: shared-network
+
+experimental:
+  plugins:
+    jwt-validation-middleware:
+      moduleName: "github.com/legege/jwt-validation-middleware"
+      version: "v0.2.1"
+
+log:
+  level: DEBUG
+
+accessLog:
+  filePath: /var/log/traefik/access.log

@@ -9,7 +9,7 @@ import java.security.Key;
 
 @Component
 public class JwtUtil {
-    private static final String SECRET_KEY = "mysecretkey12345678901234567890123456789012"; // use same as in AuthService
+    private static final String SECRET_KEY = "mysecretkey12345678901234567890123456789012";
 
     private Key getSigningKey() {
         return Keys.hmacShaKeyFor(SECRET_KEY.getBytes());

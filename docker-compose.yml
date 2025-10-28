@@ -1,0 +1,138 @@
+version: "3.9"
+
+services:
+  # --- TRAEFIK (Reverse Proxy + JWT Middleware) ---
+  traefik:
+    image: traefik:v3.1
+    container_name: traefik
+    command:
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--entrypoints.web.address=:80"
+      - "--experimental.plugins.jwt-validation-middleware.moduleName=github.com/legege/jwt-validation-middleware"
+      - "--experimental.plugins.jwt-validation-middleware.version=v0.2.1"
+    ports:
+      - "8088:80"
+      - "8888:8080"    # Traefik dashboard
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./traefik.yml:/etc/traefik/traefik.yml:ro
+      - ./plugins-storage:/plugins-storage
+    networks:
+      - shared-network
+
+  # --- AUTH SERVICE ---
+  auth_microservice:
+    build: ./auth_microservice
+    container_name: auth-service
+    depends_on:
+      - user_microservice
+      - auth_db
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://auth_db:5432/credential
+      - SPRING_DATASOURCE_USERNAME=root
+      - SPRING_DATASOURCE_PASSWORD=password
+      - SPRING_JPA_HIBERNATE_DDL_AUTO=update
+    networks:
+      - shared-network
+
+  auth_db:
+    image: postgres:16
+    container_name: auth-db
+    restart: always
+    environment:
+      - POSTGRES_DB=credential
+      - POSTGRES_USER=root
+      - POSTGRES_PASSWORD=password
+    volumes:
+      - auth_data:/var/lib/postgresql/data
+    networks:
+      - shared-network
+
+  # --- USER SERVICE ---
+  user_microservice:
+    build: ./user_microservice
+    container_name: user-service
+    depends_on:
+      - user_db
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://user_db:5432/clients
+      - SPRING_DATASOURCE_USERNAME=root
+      - SPRING_DATASOURCE_PASSWORD=password
+      - SPRING_JPA_HIBERNATE_DDL_AUTO=update
+    networks:
+      - shared-network
+
+  user_db:
+    image: postgres:16
+    container_name: user-db
+    restart: always
+    environment:
+      - POSTGRES_DB=clients
+      - POSTGRES_USER=root
+      - POSTGRES_PASSWORD=password
+    volumes:
+      - user_data:/var/lib/postgresql/data
+    networks:
+      - shared-network
+
+  # --- DEVICE SERVICE ---
+  device_microservice:
+    build: ./device_microservice
+    container_name: device-service
+    depends_on:
+      - device_db
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://device_db:5432/device
+      - SPRING_DATASOURCE_USERNAME=root
+      - SPRING_DATASOURCE_PASSWORD=password
+      - SPRING_JPA_HIBERNATE_DDL_AUTO=update
+    networks:
+      - shared-network
+
+  device_db:
+    image: postgres:16
+    container_name: device-db
+    restart: always
+    environment:
+      - POSTGRES_DB=device
+      - POSTGRES_USER=root
+      - POSTGRES_PASSWORD=password
+    volumes:
+      - device_data:/var/lib/postgresql/data
+    networks:
+      - shared-network
+
+  # --- API GATEWAY ---
+  api_microservice:
+    build: ./api_microservice
+    container_name: api-gateway
+    ports:
+      - "8080:8080"
+    depends_on:
+      - auth_microservice
+      - user_microservice
+      - device_microservice
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+    networks:
+      - shared-network
+
+  # --- FRONTEND ---
+  frontend:
+    build: ./frontend
+    container_name: frontend
+    ports:
+      - "5173:80"
+    networks:
+      - shared-network
+
+# --- NETWORKS & VOLUMES ---
+networks:
+  shared-network:
+
+volumes:
+  auth_data:
+  user_data:
+  device_data:
+  plugins-storage:
