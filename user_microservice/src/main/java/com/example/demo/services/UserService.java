@@ -71,4 +71,16 @@ public class UserService {
         }
     }
 
+    public UserDetailsDTO update(UUID id, UserDetailsDTO updatedUser) {
+        User existing = userRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+
+        existing.setName(updatedUser.getName());
+        existing.setAge(updatedUser.getAge());
+        existing.setEmail(updatedUser.getEmail());
+        existing.setRole(updatedUser.getRole());
+
+        userRepository.save(existing);
+        return UserBuilder.toPersonDetailsDTO(existing);
+    }
 }

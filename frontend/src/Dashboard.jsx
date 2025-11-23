@@ -18,26 +18,23 @@ function Dashboard() {
     }, []);
 
     const api = axios.create({
-        baseURL: "http://localhost:8080/api", // gateway base URL
+        baseURL: "http://localhost:8080/api",
         headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")}`, // send JWT token
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
         },
     });
 
     const fetchUsers = async () => {
         try {
             const res = await api.get("/users");
-
             const filteredUsers = res.data.filter(
                 (u) => !(u.name?.toLowerCase() === "admin")
             );
-
             setUsers(filteredUsers);
         } catch (err) {
             console.error("Failed to load users", err);
         }
     };
-
 
     const fetchDevices = async () => {
         try {
@@ -68,51 +65,67 @@ function Dashboard() {
         setShowModal(true);
     };
 
+    const openEditModal = (type, item) => {
+        setModalType(type);
+        setFormData(item);
+        setShowModal(true);
+    };
+
     const handleInputChange = (e) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
     };
 
-    const handleAdd = async () => {
+    const handleSave = async () => {
         try {
             if (modalType === "user") {
-                const credentialRes = await api.post("/auth/register", {
-                    username: formData.username,
-                    password: formData.password,
-                    role: formData.role,
-                });
+                if (formData.id) {
+                    // Edit user
+                    await api.put(`/users/${formData.id}`, formData);
+                    alert("User updated successfully!");
+                } else {
+                    // Add new user
+                    const credentialRes = await api.post("/auth/register", {
+                        username: formData.username,
+                        password: formData.password,
+                        role: formData.role,
+                    });
 
-                const credentialId = credentialRes.data.id;
+                    const credentialId = credentialRes.data.id;
 
-                const userPayload = {
-                    name: formData.name,
-                    age: parseInt(formData.age),
-                    email: formData.email,
-                    role: formData.role,
-                    credentialId: credentialId,
-                };
+                    const userPayload = {
+                        name: formData.name,
+                        age: parseInt(formData.age),
+                        email: formData.email,
+                        role: formData.role,
+                        credentialId: credentialId,
+                    };
 
-                await api.post("/users", userPayload);
+                    await api.post("/users", userPayload);
+                    alert("User added successfully!");
+                }
                 fetchUsers();
-
-                alert("Added successfully!");
-                setShowModal(false);
             } else if (modalType === "device") {
-                await api.post("/device", {
-                    name: formData.name,
-                    description: formData.description,
-                    maxConsumption: parseFloat(formData.maxConsumption),
-                    location: formData.location,
-                });
+                if (formData.id) {
+                    await api.put(`/device/${formData.id}`, formData);
+                    alert("Device updated successfully!");
+                } else {
+                    await api.post("/device", {
+                        name: formData.name,
+                        description: formData.description,
+                        maxConsumption: parseFloat(formData.maxConsumption),
+                        location: formData.location,
+                    });
+                    alert("Device added successfully!");
+                }
                 fetchDevices();
-                alert("Device added successfully!");
-                setShowModal(false);
             }
+
+            setShowModal(false);
         } catch (err) {
-            console.error("Error adding:", err.response?.data || err);
-            alert("Failed to add item: " + (err.response?.data?.message || "Check backend logs"));
+            console.error("Error saving:", err.response?.data || err);
+            alert("Failed to save item: " + (err.response?.data?.message || "Check backend logs"));
         }
     };
-
 
     const handleDelete = async (type, id) => {
         const confirmed = window.confirm("Are you sure you want to delete this?");
@@ -134,7 +147,6 @@ function Dashboard() {
         }
     };
 
-
     return (
         <div className="dashboard">
             <h1>Admin Dashboard</h1>
@@ -151,19 +163,23 @@ function Dashboard() {
                 </button>
             </div>
 
+            {/* USERS */}
             {activeTab === "users" && (
                 <div className="section">
                     <div className="section-header">
                         <h2>Manage Users</h2>
                         <button className="add-btn" onClick={() => openModal("user")}>+ Add User</button>
                     </div>
-                    <table>
+                    <table className="styled-table">
                         <thead>
                         <tr>
-                            <th>ID</th>
-                            <th>Name</th>
-                            <th>Age</th>
-                            <th>Actions</th>
+                            <th rowSpan="2">ID</th>
+                            <th rowSpan="2">Name</th>
+                            <th rowSpan="2">Age</th>
+                        </tr>
+                        <tr>
+                            <th>Edit</th>
+                            <th>Delete</th>
                         </tr>
                         </thead>
                         <tbody>
@@ -172,6 +188,9 @@ function Dashboard() {
                                 <td>{u.id}</td>
                                 <td>{u.name}</td>
                                 <td>{u.age}</td>
+                                <td>
+                                    <button className="edit-btn" onClick={() => openEditModal("user", u)}>Edit</button>
+                                </td>
                                 <td>
                                     <button className="delete-btn" onClick={() => handleDelete("user", u.id)}>Delete</button>
                                 </td>
@@ -182,36 +201,44 @@ function Dashboard() {
                 </div>
             )}
 
+            {/* DEVICES */}
             {activeTab === "devices" && (
                 <div className="section">
                     <div className="section-header">
                         <h2>Manage Devices</h2>
                         <button className="add-btn" onClick={() => openModal("device")}>+ Add Device</button>
                     </div>
-                    <table>
+                    <table className="styled-table">
                         <thead>
                         <tr>
-                            <th>ID</th>
-                            <th>Name</th>
-                            <th>Description</th>
-                            <th>Consumption</th>
-                            <th>Location</th>
-                            <th>Actions</th>
+                            <th rowSpan="2">ID</th>
+                            <th rowSpan="2">Name</th>
+                            <th rowSpan="2">Description</th>
+                            <th rowSpan="2">Consumption</th>
+                            <th rowSpan="2">Location</th>
+                            <th colSpan="2" className="action-header">Actions</th>
+                        </tr>
+                        <tr>
+                            <th>Edit</th>
+                            <th>Delete</th>
                         </tr>
                         </thead>
                         <tbody>
                         {devices.length === 0 ? (
                             <tr>
-                                <td colSpan={6} className="empty-cell">No devices found</td>
+                                <td colSpan={7} className="empty-cell">No devices found</td>
                             </tr>
                         ) : (
-                            devices.map(d => (
+                            devices.map((d) => (
                                 <tr key={d.id}>
                                     <td>{d.id}</td>
                                     <td>{d.name}</td>
                                     <td>{d.description}</td>
                                     <td>{d.maxConsumption}</td>
                                     <td>{d.location}</td>
+                                    <td>
+                                        <button className="edit-btn" onClick={() => openEditModal("device", d)}>Edit</button>
+                                    </td>
                                     <td>
                                         <button className="delete-btn" onClick={() => handleDelete("device", d.id)}>Delete</button>
                                     </td>
@@ -223,6 +250,8 @@ function Dashboard() {
                 </div>
             )}
 
+
+            {/* ASSIGN */}
             {activeTab === "assign" && (
                 <div className="section">
                     <h2>Assign Device to User</h2>
@@ -244,35 +273,45 @@ function Dashboard() {
                 </div>
             )}
 
+            {/* MODAL */}
             {showModal && (
                 <div className="modal-overlay">
                     <div className="modal">
-                        <h3>{modalType === "user" ? "Add User" : "Add Device"}</h3>
+                        <h3>
+                            {formData.id
+                                ? `Edit ${modalType === "user" ? "User" : "Device"}`
+                                : `Add ${modalType === "user" ? "User" : "Device"}`}
+                        </h3>
                         {modalType === "user" ? (
                             <>
-                                <input name="name" placeholder="Full Name" onChange={handleInputChange} />
-                                <input name="age" placeholder="Age" type="number" onChange={handleInputChange} />
-                                <input name="email" placeholder="Email" type="email" onChange={handleInputChange} />
-                                <input name="username" placeholder="Username" onChange={handleInputChange} />
-                                <input name="password" placeholder="Password" type="password" onChange={handleInputChange} />
-
-                                <select name="role" onChange={handleInputChange} defaultValue="">
-                                    <option value="" disabled>Select Role</option>
-                                    <option value="ADMIN">Admin</option>
-                                    <option value="CLIENT">Client</option>
-                                </select>
+                                <input name="name" placeholder="Full Name" value={formData.name || ""} onChange={handleInputChange} />
+                                <input name="age" placeholder="Age" type="number" value={formData.age || ""} onChange={handleInputChange} />
+                                <input name="email" placeholder="Email" type="email" value={formData.email || ""} onChange={handleInputChange} />
+                                {!formData.id && (
+                                    <>
+                                        <input name="username" placeholder="Username" onChange={handleInputChange} />
+                                        <input name="password" placeholder="Password" type="password" onChange={handleInputChange} />
+                                        <select name="role" onChange={handleInputChange} defaultValue="">
+                                            <option value="" disabled>Select Role</option>
+                                            <option value="ADMIN">Admin</option>
+                                            <option value="CLIENT">Client</option>
+                                        </select>
+                                    </>
+                                )}
                             </>
                         ) : (
                             <>
-                                <input name="name" placeholder="Device Name" onChange={handleInputChange} />
-                                <input name="description" placeholder="Description" onChange={handleInputChange} />
-                                <input name="maxConsumption" placeholder="Consumption" type="number" onChange={handleInputChange} />
-                                <input name="location" placeholder="Location" onChange={handleInputChange} />
+                                <input name="name" placeholder="Device Name" value={formData.name || ""} onChange={handleInputChange} />
+                                <input name="description" placeholder="Description" value={formData.description || ""} onChange={handleInputChange} />
+                                <input name="maxConsumption" placeholder="Consumption" type="number" value={formData.maxConsumption || ""} onChange={handleInputChange} />
+                                <input name="location" placeholder="Location" value={formData.location || ""} onChange={handleInputChange} />
                             </>
                         )}
 
                         <div className="modal-actions">
-                            <button className="confirm-btn" onClick={handleAdd}>Add</button>
+                            <button className="confirm-btn" onClick={handleSave}>
+                                {formData.id ? "Save Changes" : "Add"}
+                            </button>
                             <button className="cancel-btn" onClick={() => setShowModal(false)}>Cancel</button>
                         </div>
                     </div>

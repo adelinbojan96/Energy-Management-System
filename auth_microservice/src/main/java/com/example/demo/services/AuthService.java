@@ -8,10 +8,14 @@ import com.example.demo.security.JwtUtil;
 import com.example.demo.security.Role;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.amqp.core.AmqpTemplate;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -21,13 +25,19 @@ public class AuthService {
     private final CredentialRepository credentialRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
+    private final AmqpTemplate rabbitTemplate;
+
+    @Value("${rabbitmq.exchange.name}")
+    private String syncExchange;
 
     public AuthService(CredentialRepository credentialRepository,
                        PasswordEncoder passwordEncoder,
-                       JwtUtil jwtUtil) {
+                       JwtUtil jwtUtil,
+                       AmqpTemplate rabbitTemplate) {
         this.credentialRepository = credentialRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtUtil = jwtUtil;
+        this.rabbitTemplate = rabbitTemplate;
     }
 
     public UUID register(CredentialDetailsDTO dto) {
@@ -42,6 +52,19 @@ public class AuthService {
 
         Credential saved = credentialRepository.save(credential);
         LOGGER.info("Credential {} registered successfully as {}", credential.getUsername(), credential.getRole());
+
+        Map<String, String> syncMessage = new HashMap<>();
+        syncMessage.put("event_type", "USER_CREATED");
+        syncMessage.put("user_id", saved.getId().toString());
+        syncMessage.put("username", saved.getUsername());
+
+        try {
+            rabbitTemplate.convertAndSend(syncExchange, "", syncMessage);
+            LOGGER.info("Published USER_CREATED event for user_id: {}", saved.getId());
+        } catch (Exception e) {
+            LOGGER.error("Failed to publish USER_CREATED event for user_id: {}", saved.getId(), e);
+        }
+
         return saved.getId();
     }
 
@@ -74,5 +97,4 @@ public class AuthService {
         credentialRepository.deleteById(id);
         LOGGER.info("Deleted credential with id {} and username {}", id, credential.getUsername());
     }
-
 }

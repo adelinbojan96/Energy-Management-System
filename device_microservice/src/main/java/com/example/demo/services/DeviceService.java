@@ -60,6 +60,18 @@ public class DeviceService {
         deviceRepository.deleteById(id);
         LOGGER.info("Deleted device with id {}", id);
     }
+    public DeviceDTO update(UUID id, DeviceDTO updatedDevice) {
+        Device existing = deviceRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Device not found"));
+
+        existing.setName(updatedDevice.getName());
+        existing.setDescription(updatedDevice.getDescription());
+        existing.setMaxConsumption(updatedDevice.getMaxConsumption());
+        existing.setLocation(updatedDevice.getLocation());
+
+        deviceRepository.save(existing);
+        return DeviceBuilder.toDeviceDTO(existing);
+    }
 
     public void assignDeviceToUser(UUID deviceId, UUID userId) {
         Optional<Device> deviceOptional = deviceRepository.findById(deviceId);

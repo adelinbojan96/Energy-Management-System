@@ -1,7 +1,7 @@
 version: "3.9"
 
 services:
-  # --- TRAEFIK (Reverse Proxy + JWT Middleware) ---
+  # --- TRAEFIK ---
   traefik:
     image: traefik:v3.1
     container_name: traefik
@@ -13,11 +13,21 @@ services:
       - "--experimental.plugins.jwt-validation-middleware.version=v0.2.1"
     ports:
       - "8088:80"
-      - "8888:8080"    # Traefik dashboard
+      - "8888:8080"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - ./traefik.yml:/etc/traefik/traefik.yml:ro
       - ./plugins-storage:/plugins-storage
+    networks:
+      - shared-network
+
+  # --- MESSAGE BROKER (RABBITMQ) ---
+  rabbitmq:
+    image: rabbitmq:3.12-management
+    container_name: rabbitmq
+    ports:
+      - "5672:5672"    
+      - "15672:15672"  
     networks:
       - shared-network
 
@@ -28,11 +38,16 @@ services:
     depends_on:
       - user_microservice
       - auth_db
+      - rabbitmq
     environment:
       - SPRING_DATASOURCE_URL=jdbc:postgresql://auth_db:5432/credential
       - SPRING_DATASOURCE_USERNAME=root
       - SPRING_DATASOURCE_PASSWORD=password
       - SPRING_JPA_HIBERNATE_DDL_AUTO=update
+      - SPRING_RABBITMQ_HOST=rabbitmq
+      - SPRING_RABBITMQ_PORT=5672
+      - RABBITMQ_EXCHANGE_NAME=sync-exchange
+      - RABBITMQ_ROUTING_KEY=user.create
     networks:
       - shared-network
 
@@ -55,11 +70,16 @@ services:
     container_name: user-service
     depends_on:
       - user_db
+      - rabbitmq
     environment:
       - SPRING_DATASOURCE_URL=jdbc:postgresql://user_db:5432/clients
       - SPRING_DATASOURCE_USERNAME=root
       - SPRING_DATASOURCE_PASSWORD=password
       - SPRING_JPA_HIBERNATE_DDL_AUTO=update
+      - SPRING_RABBITMQ_HOST=rabbitmq
+      - SPRING_RABBITMQ_PORT=5672
+      - RABBITMQ_EXCHANGE_NAME=sync-exchange
+      - RABBITMQ_ROUTING_KEY=user.create
     networks:
       - shared-network
 
@@ -82,11 +102,16 @@ services:
     container_name: device-service
     depends_on:
       - device_db
+      - rabbitmq
     environment:
       - SPRING_DATASOURCE_URL=jdbc:postgresql://device_db:5432/device
       - SPRING_DATASOURCE_USERNAME=root
       - SPRING_DATASOURCE_PASSWORD=password
       - SPRING_JPA_HIBERNATE_DDL_AUTO=update
+      - SPRING_RABBITMQ_HOST=rabbitmq
+      - SPRING_RABBITMQ_PORT=5672
+      - RABBITMQ_EXCHANGE_NAME=sync-exchange
+      - RABBITMQ_ROUTING_KEY=device.create
     networks:
       - shared-network
 
@@ -102,6 +127,38 @@ services:
       - device_data:/var/lib/postgresql/data
     networks:
       - shared-network
+
+  # --- MONITORING SERVICE ---
+  monitoring_microservice:
+    build: ./monitoring_microservice
+    container_name: monitoring-service
+    depends_on:
+      - monitoring_db
+      - rabbitmq
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://monitoring_db:5432/monitoring
+      - SPRING_DATASOURCE_USERNAME=root
+      - SPRING_DATASOURCE_PASSWORD=password
+      - SPRING_JPA_HIBERNATE_DDL_AUTO=update
+      - SPRING_RABBITMQ_HOST=rabbitmq
+      - SPRING_RABBITMQ_PORT=5672
+    networks:
+      - shared-network
+
+  monitoring_db:
+      image: postgres:16
+      container_name: monitoring-db
+      restart: always
+      ports:
+        - "5434:5432"
+      environment:
+        - POSTGRES_DB=monitoring
+        - POSTGRES_USER=root
+        - POSTGRES_PASSWORD=password
+      volumes:
+        - monitoring_data:/var/lib/postgresql/data
+      networks:
+        - shared-network
 
   # --- API GATEWAY ---
   api_microservice:
@@ -136,3 +193,4 @@ volumes:
   user_data:
   device_data:
   plugins-storage:
+  monitoring_data:

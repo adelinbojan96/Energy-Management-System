@@ -262,3 +262,17 @@ select:focus {
 .cancel-btn:hover {
     background-color: #777;
 }
+.edit-btn {
+    background-color: #f1c40f;
+    color: black;
+    border: none;
+    padding: 5px 10px;
+    margin-right: 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background 0.2s ease-in-out;
+}
+
+.edit-btn:hover {
+    background-color: #f39c12;
+}

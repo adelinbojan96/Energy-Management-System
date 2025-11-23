@@ -1,5 +1,6 @@
 com/example/demo/security/JwtUtil.class
 com/example/demo/config/GatewayConfig.class
 com/example/demo/config/SecurityConfig.class
+com/example/demo/config/SwaggerConfig.class
 com/example/demo/filter/JwtAuthenticationFilter.class
 com/example/demo/GatewayApplication.class
