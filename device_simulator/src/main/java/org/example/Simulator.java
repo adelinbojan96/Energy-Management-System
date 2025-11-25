@@ -10,10 +10,10 @@ import java.util.Properties;
 import java.util.Random;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
+import java.time.LocalDateTime; 
 
 public class Simulator {
 
-    private static final String QUEUE_NAME = "data_queue";
 
     public static void main(String[] args) {
         System.out.println("--- Energy Data Simulator Started ---");
@@ -22,7 +22,7 @@ public class Simulator {
             Properties props = new Properties();
             try (InputStream input = Simulator.class.getClassLoader().getResourceAsStream("config.properties")) {
                 if (input == null) {
-                    System.out.println("Sorry, unable to find config.properties");
+                    System.err.println("Error: Unable to find config.properties");
                     return;
                 }
                 props.load(input);
@@ -30,7 +30,14 @@ public class Simulator {
 
             String deviceId = props.getProperty("device.id");
             String host = props.getProperty("rabbitmq.host");
-            
+            String exchangeName = props.getProperty("rabbitmq.exchange.name");
+            String routingKeyData = props.getProperty("rabbitmq.routing.key.data");
+
+            if (deviceId == null || host == null || exchangeName == null || routingKeyData == null) {
+                System.err.println("Error: Missing RabbitMQ/Device properties in config.properties");
+                return;
+            }
+
             ConnectionFactory factory = new ConnectionFactory();
             factory.setHost(host);
             factory.setPort(5672);
@@ -39,38 +46,43 @@ public class Simulator {
 
             try (Connection connection = factory.newConnection();
                  Channel channel = connection.createChannel()) {
-
-                channel.queueDeclare(QUEUE_NAME, true, false, false, null);
+                
+                channel.exchangeDeclare(exchangeName, "topic", true); 
 
                 ObjectMapper mapper = new ObjectMapper();
                 Random random = new Random();
                 double currentConsumption = 5.0; 
+                
+                final long INTERVAL_SECONDS = 600; 
 
                 System.out.println("Sending data for Device ID: " + deviceId);
-
+                System.out.println("Publishing to Exchange: " + exchangeName + ", Key: " + routingKeyData);
+                
                 while (true) {
                     long timestamp = System.currentTimeMillis();
-                    double fluctuation = (random.nextDouble() - 0.5) * 1.5; 
+                    
+                    double fluctuation = (random.nextDouble() - 0.5) * 0.5; 
                     currentConsumption += fluctuation;
                     if (currentConsumption < 0.1) currentConsumption = 0.1;
 
                     Measurement measurement = new Measurement(
                             timestamp,
                             UUID.fromString(deviceId),
-                            currentConsumption
+
+                            random.nextDouble() * 1.4 + 0.1 
                     );
 
                     String json = mapper.writeValueAsString(measurement);
 
-                    channel.basicPublish("", QUEUE_NAME, null, json.getBytes());
-                    System.out.println(" [x] Sent: " + json);
-
-                    TimeUnit.SECONDS.sleep(3); 
+                    channel.basicPublish(exchangeName, routingKeyData, null, json.getBytes());
+                    
+                    System.out.println(" [x] Sent at " + LocalDateTime.now() + ": " + json);
+                    TimeUnit.SECONDS.sleep(INTERVAL_SECONDS); 
                 }
             }
 
         } catch (Exception e) {
-            e.printStackTrace();
+            System.err.println("Simulator Error: " + e.getMessage());
         }
     }
 

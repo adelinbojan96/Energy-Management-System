@@ -16,7 +16,7 @@ function Login() {
         setLoading(true);
 
         try {
-            const response = await axios.post("http://localhost:8080/api/auth/login", {
+            const response = await axios.post("http://localhost:8088/api/auth/login", {
                 username,
                 password,
             });
@@ -25,7 +25,14 @@ function Login() {
             localStorage.setItem("token", token);
 
             const decoded = JSON.parse(atob(token.split(".")[1]));
+            console.log("Token Decodat:", decoded);
+            
             const role = decoded.role || "CLIENT";
+            
+            const userId = decoded.id || decoded.userId; 
+            if (userId) {
+                localStorage.setItem("userId", userId);
+            }
 
             if (role === "ADMIN") {
                 navigate("/admin-dashboard");

@@ -3,7 +3,7 @@ entryPoints:
     address: ":80"
 
 api:
-  insecure: true  # Dashboard on :8080 (for debugging only)
+  insecure: true 
 
 providers:
   docker:

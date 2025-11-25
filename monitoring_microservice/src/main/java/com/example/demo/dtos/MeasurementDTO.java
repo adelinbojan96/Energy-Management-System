@@ -17,13 +17,15 @@ public class MeasurementDTO {
     @JsonProperty("measurement_value")
     private Double value;
 
+    public MeasurementDTO() {
+    }
+
     public LocalDateTime getLocalDateTime() {
         if (timestamp == null) return null;
         return Instant.ofEpochMilli(timestamp)
                 .atZone(ZoneId.systemDefault())
                 .toLocalDateTime();
     }
-
 
     public Long getTimestamp() {
         return timestamp;
@@ -47,5 +49,14 @@ public class MeasurementDTO {
 
     public void setValue(Double value) {
         this.value = value;
+    }
+
+    @Override
+    public String toString() {
+        return "MeasurementDTO{" +
+                "timestamp=" + timestamp +
+                ", deviceId=" + deviceId +
+                ", value=" + value +
+                '}';
     }
 }

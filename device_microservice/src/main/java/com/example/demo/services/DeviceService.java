@@ -1,6 +1,5 @@
 package com.example.demo.services;
 
-
 import com.example.demo.dtos.DeviceDTO;
 import com.example.demo.dtos.DeviceDetailsDTO;
 import com.example.demo.dtos.builders.DeviceBuilder;
@@ -60,6 +59,7 @@ public class DeviceService {
         deviceRepository.deleteById(id);
         LOGGER.info("Deleted device with id {}", id);
     }
+
     public DeviceDTO update(UUID id, DeviceDTO updatedDevice) {
         Device existing = deviceRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Device not found"));
@@ -73,7 +73,8 @@ public class DeviceService {
         return DeviceBuilder.toDeviceDTO(existing);
     }
 
-    public void assignDeviceToUser(UUID deviceId, UUID userId) {
+
+    public Device assignDeviceToUser(UUID deviceId, UUID userId) {
         Optional<Device> deviceOptional = deviceRepository.findById(deviceId);
         if (deviceOptional.isEmpty()) {
             LOGGER.error("Device with the id {} not found", deviceId);
@@ -82,7 +83,6 @@ public class DeviceService {
 
         Device device = deviceOptional.get();
         device.setUserId(userId);
-        deviceRepository.save(device);
-        LOGGER.info("Assigned device with id {} to user with id {}", deviceId, userId);
+        return deviceRepository.save(device); 
     }
 }

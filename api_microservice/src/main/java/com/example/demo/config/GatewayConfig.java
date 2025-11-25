@@ -29,6 +29,8 @@ public class GatewayConfig {
                                 .dedupeResponseHeader("Access-Control-Allow-Credentials", "RETAIN_FIRST")
                                 .dedupeResponseHeader("Access-Control-Expose-Headers", "RETAIN_FIRST"))
                         .uri("http://user-service:8081"))
+                
+                // DEVICES
                 .route("device_microservice", r -> r
                         .path("/api/device/**")
                         .filters(f -> f
@@ -37,9 +39,15 @@ public class GatewayConfig {
                                 .dedupeResponseHeader("Access-Control-Allow-Credentials", "RETAIN_FIRST")
                                 .dedupeResponseHeader("Access-Control-Expose-Headers", "RETAIN_FIRST"))
                         .uri("http://device-service:8082"))
+
+                .route("monitoring_microservice", r -> r
+                        .path("/api/monitoring/**")
+                        .filters(f -> f
+                                .dedupeResponseHeader("Access-Control-Allow-Origin", "RETAIN_FIRST")
+                                .dedupeResponseHeader("Access-Control-Allow-Credentials", "RETAIN_FIRST")
+                                .dedupeResponseHeader("Access-Control-Expose-Headers", "RETAIN_FIRST"))
+                        .uri("http://monitoring-service:8084"))
+                
                 .build();
-
-
-
     }
 }

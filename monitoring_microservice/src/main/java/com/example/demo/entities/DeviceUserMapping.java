@@ -19,6 +19,9 @@ public class DeviceUserMapping {
     @Column(nullable = false)
     private UUID userId;
 
+    @Column(name = "max_consumption")
+    private Double maxConsumption;
+
     public DeviceUserMapping() {}
 
     public DeviceUserMapping(UUID deviceId, UUID userId) {
@@ -48,5 +51,13 @@ public class DeviceUserMapping {
 
     public void setUserId(UUID userId) {
         this.userId = userId;
+    }
+
+    public Double getMaxConsumption() {
+        return maxConsumption;
+    }
+
+    public void setMaxConsumption(Double maxConsumption) {
+        this.maxConsumption = maxConsumption;
     }
 }

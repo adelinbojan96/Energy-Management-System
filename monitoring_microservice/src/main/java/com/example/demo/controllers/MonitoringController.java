@@ -4,9 +4,6 @@ import com.example.demo.dtos.HourlyConsumptionDTO;
 import com.example.demo.services.MonitoringService;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
@@ -15,6 +12,7 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/monitoring")
+// Lăsăm cross origin pentru siguranță, deși gateway-ul rezolvă
 @CrossOrigin(origins = "*") 
 public class MonitoringController {
 
@@ -26,14 +24,11 @@ public class MonitoringController {
 
     @GetMapping("/consumption")
     public ResponseEntity<List<HourlyConsumptionDTO>> getDailyConsumption(
-            @RequestParam("date") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
-
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        Jwt jwt = (Jwt) authentication.getPrincipal();
-        UUID userId = UUID.fromString(jwt.getSubject());
+            @RequestParam("date") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+            @RequestParam("userId") UUID userId 
+    ) {
 
         List<HourlyConsumptionDTO> data = monitoringService.getChartDataForUser(userId, date);
-
         return ResponseEntity.ok(data);
     }
 }

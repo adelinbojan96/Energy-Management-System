@@ -14,6 +14,20 @@ public class SyncEventDTO {
 
     @JsonProperty("device_id")
     private UUID deviceId;
+    
+    @JsonProperty("max_consumption")
+    private Double maxConsumption;    
+
+    public SyncEventDTO() {
+    }
+
+    public Double getMaxConsumption() {
+        return maxConsumption;
+    }
+
+    public void setMaxConsumption(Double maxConsumption) {
+        this.maxConsumption = maxConsumption;
+    }
 
     public String getEventType() {
         return eventType;
@@ -37,5 +51,15 @@ public class SyncEventDTO {
 
     public void setDeviceId(UUID deviceId) {
         this.deviceId = deviceId;
+    }
+
+    @Override
+    public String toString() {
+        return "SyncEventDTO{" +
+                "eventType='" + eventType + '\'' +
+                ", userId=" + userId +
+                ", deviceId=" + deviceId +
+                ", maxConsumption=" + maxConsumption +
+                '}';
     }
 }

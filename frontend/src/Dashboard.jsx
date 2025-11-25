@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
-import "./Dashboard.css";
+import { useNavigate } from "react-router-dom";
+import "./Dashboard.css"; 
 
 function Dashboard() {
     const [activeTab, setActiveTab] = useState("users");
@@ -12,13 +13,15 @@ function Dashboard() {
     const [modalType, setModalType] = useState("");
     const [formData, setFormData] = useState({});
 
+    const navigate = useNavigate();
+
     useEffect(() => {
         fetchUsers();
         fetchDevices();
     }, []);
 
     const api = axios.create({
-        baseURL: "http://localhost:8080/api",
+        baseURL:'http://localhost:8088/api',
         headers: {
             Authorization: `Bearer ${localStorage.getItem("token")}`,
         },
@@ -79,11 +82,9 @@ function Dashboard() {
         try {
             if (modalType === "user") {
                 if (formData.id) {
-                    // Edit user
                     await api.put(`/users/${formData.id}`, formData);
                     alert("User updated successfully!");
                 } else {
-                    // Add new user
                     const credentialRes = await api.post("/auth/register", {
                         username: formData.username,
                         password: formData.password,
@@ -119,7 +120,6 @@ function Dashboard() {
                 }
                 fetchDevices();
             }
-
             setShowModal(false);
         } catch (err) {
             console.error("Error saving:", err.response?.data || err);
@@ -130,7 +130,6 @@ function Dashboard() {
     const handleDelete = async (type, id) => {
         const confirmed = window.confirm("Are you sure you want to delete this?");
         if (!confirmed) return;
-
         try {
             if (type === "user") {
                 await api.delete(`/users/${id}`);
@@ -139,7 +138,6 @@ function Dashboard() {
                 await api.delete(`/device/${id}`);
                 fetchDevices();
             }
-
             alert("Deleted successfully!");
         } catch (err) {
             console.error("Error deleting:", err.response?.data || err);
@@ -161,9 +159,11 @@ function Dashboard() {
                 <button className={activeTab === "assign" ? "active" : ""} onClick={() => setActiveTab("assign")}>
                     Assign Devices
                 </button>
+                <button onClick={() => navigate("/monitoring")}>
+                    Monitoring
+                </button>
             </div>
 
-            {/* USERS */}
             {activeTab === "users" && (
                 <div className="section">
                     <div className="section-header">
@@ -201,7 +201,6 @@ function Dashboard() {
                 </div>
             )}
 
-            {/* DEVICES */}
             {activeTab === "devices" && (
                 <div className="section">
                     <div className="section-header">
@@ -250,8 +249,6 @@ function Dashboard() {
                 </div>
             )}
 
-
-            {/* ASSIGN */}
             {activeTab === "assign" && (
                 <div className="section">
                     <h2>Assign Device to User</h2>
@@ -273,7 +270,6 @@ function Dashboard() {
                 </div>
             )}
 
-            {/* MODAL */}
             {showModal && (
                 <div className="modal-overlay">
                     <div className="modal">
@@ -307,7 +303,6 @@ function Dashboard() {
                                 <input name="location" placeholder="Location" value={formData.location || ""} onChange={handleInputChange} />
                             </>
                         )}
-
                         <div className="modal-actions">
                             <button className="confirm-btn" onClick={handleSave}>
                                 {formData.id ? "Save Changes" : "Add"}

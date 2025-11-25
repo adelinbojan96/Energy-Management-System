@@ -12,7 +12,6 @@ import org.springframework.amqp.core.AmqpTemplate;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestTemplate;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -29,6 +28,9 @@ public class AuthService {
 
     @Value("${rabbitmq.exchange.name}")
     private String syncExchange;
+    
+    @Value("${rabbitmq.routing.key.user.created}") 
+    private String userCreatedRoutingKey;
 
     public AuthService(CredentialRepository credentialRepository,
                        PasswordEncoder passwordEncoder,
@@ -57,10 +59,11 @@ public class AuthService {
         syncMessage.put("event_type", "USER_CREATED");
         syncMessage.put("user_id", saved.getId().toString());
         syncMessage.put("username", saved.getUsername());
+        
 
         try {
-            rabbitTemplate.convertAndSend(syncExchange, "", syncMessage);
-            LOGGER.info("Published USER_CREATED event for user_id: {}", saved.getId());
+            rabbitTemplate.convertAndSend(syncExchange, userCreatedRoutingKey, syncMessage); 
+            LOGGER.info("Published USER_CREATED event for user_id: {} with key {}", saved.getId(), userCreatedRoutingKey);
         } catch (Exception e) {
             LOGGER.error("Failed to publish USER_CREATED event for user_id: {}", saved.getId(), e);
         }

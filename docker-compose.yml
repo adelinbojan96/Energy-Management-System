@@ -1,7 +1,6 @@
 version: "3.9"
 
 services:
-  # --- TRAEFIK ---
   traefik:
     image: traefik:v3.1
     container_name: traefik
@@ -9,6 +8,7 @@ services:
       - "--api.insecure=true"
       - "--providers.docker=true"
       - "--entrypoints.web.address=:80"
+      # Middleware-ul JWT poate rămâne aici dacă îl folosești global, sau îl poți scoate dacă îl faci în Java
       - "--experimental.plugins.jwt-validation-middleware.moduleName=github.com/legege/jwt-validation-middleware"
       - "--experimental.plugins.jwt-validation-middleware.version=v0.2.1"
     ports:
@@ -21,17 +21,15 @@ services:
     networks:
       - shared-network
 
-  # --- MESSAGE BROKER (RABBITMQ) ---
   rabbitmq:
     image: rabbitmq:3.12-management
     container_name: rabbitmq
     ports:
-      - "5672:5672"    
-      - "15672:15672"  
+      - "5672:5672"
+      - "15672:15672"
     networks:
       - shared-network
 
-  # --- AUTH SERVICE ---
   auth_microservice:
     build: ./auth_microservice
     container_name: auth-service
@@ -48,6 +46,7 @@ services:
       - SPRING_RABBITMQ_PORT=5672
       - RABBITMQ_EXCHANGE_NAME=sync-exchange
       - RABBITMQ_ROUTING_KEY=user.create
+      - RABBITMQ_ROUTING_KEY_USER_CREATED=user.created
     networks:
       - shared-network
 
@@ -64,7 +63,6 @@ services:
     networks:
       - shared-network
 
-  # --- USER SERVICE ---
   user_microservice:
     build: ./user_microservice
     container_name: user-service
@@ -96,7 +94,6 @@ services:
     networks:
       - shared-network
 
-  # --- DEVICE SERVICE ---
   device_microservice:
     build: ./device_microservice
     container_name: device-service
@@ -112,6 +109,8 @@ services:
       - SPRING_RABBITMQ_PORT=5672
       - RABBITMQ_EXCHANGE_NAME=sync-exchange
       - RABBITMQ_ROUTING_KEY=device.create
+      - RABBITMQ_ROUTING_KEY_DEVICE_DATA=device.data
+      - RABBITMQ_ROUTING_KEY_DEVICE_DELETE=device.delete
     networks:
       - shared-network
 
@@ -128,13 +127,14 @@ services:
     networks:
       - shared-network
 
-  # --- MONITORING SERVICE ---
   monitoring_microservice:
     build: ./monitoring_microservice
     container_name: monitoring-service
     depends_on:
       - monitoring_db
       - rabbitmq
+    # Păstrăm entrypoint-ul pentru a fi siguri de portul 8084
+    entrypoint: ["java", "-Dserver.port=8084", "-jar", "app.jar"]
     environment:
       - SPRING_DATASOURCE_URL=jdbc:postgresql://monitoring_db:5432/monitoring
       - SPRING_DATASOURCE_USERNAME=root
@@ -142,49 +142,64 @@ services:
       - SPRING_JPA_HIBERNATE_DDL_AUTO=update
       - SPRING_RABBITMQ_HOST=rabbitmq
       - SPRING_RABBITMQ_PORT=5672
+      - RABBITMQ_EXCHANGE_NAME=sync-exchange
+      - RABBITMQ_QUEUE_DATA=device-data-queue
+      - RABBITMQ_QUEUE_SYNC=monitoring-sync-queue
+      - RABBITMQ_ROUTING_KEY_SYNC_PATTERN=device.*
+      - RABBITMQ_ROUTING_KEY_DATA=device.data
+    # AM SCOS LABELS PENTRU TRAEFIK. 
+    # Acum este accesibil doar intern prin http://monitoring-service:8084, apelat de API Gateway.
     networks:
       - shared-network
 
   monitoring_db:
-      image: postgres:16
-      container_name: monitoring-db
-      restart: always
-      ports:
-        - "5434:5432"
-      environment:
-        - POSTGRES_DB=monitoring
-        - POSTGRES_USER=root
-        - POSTGRES_PASSWORD=password
-      volumes:
-        - monitoring_data:/var/lib/postgresql/data
-      networks:
-        - shared-network
+    image: postgres:16
+    container_name: monitoring-db
+    restart: always
+    ports:
+      - "5434:5432"
+    environment:
+      - POSTGRES_DB=monitoring
+      - POSTGRES_USER=root
+      - POSTGRES_PASSWORD=password
+    volumes:
+      - monitoring_data:/var/lib/postgresql/data
+    networks:
+      - shared-network
 
-  # --- API GATEWAY ---
   api_microservice:
     build: ./api_microservice
     container_name: api-gateway
-    ports:
-      - "8080:8080"
     depends_on:
       - auth_microservice
       - user_microservice
       - device_microservice
+      # Este bine să depindă și de monitoring acum
+      - monitoring_microservice 
     environment:
       - SPRING_PROFILES_ACTIVE=docker
     networks:
       - shared-network
+    labels:
+      - "traefik.enable=true"
+      # REVENIRE LA ORIGINAL: Gateway-ul se ocupă de TOT ce e sub /api
+      - "traefik.http.routers.api-gateway.rule=PathPrefix(`/api`)"
+      - "traefik.http.routers.api-gateway.entrypoints=web"
+      - "traefik.http.services.api-gateway.loadbalancer.server.port=8080"
 
-  # --- FRONTEND ---
   frontend:
     build: ./frontend
     container_name: frontend
     ports:
       - "5173:80"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.frontend.rule=Host(`localhost`)"
+      - "traefik.http.routers.frontend.entrypoints=web"
+      - "traefik.http.services.frontend.loadbalancer.server.port=80"
     networks:
       - shared-network
 
-# --- NETWORKS & VOLUMES ---
 networks:
   shared-network:
 

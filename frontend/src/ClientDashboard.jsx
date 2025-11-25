@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
-import "./Dashboard.css";
+import { useNavigate } from "react-router-dom";
 
 function ClientDashboard() {
     const [devices, setDevices] = useState([]);
     const [username, setUsername] = useState("");
+    const navigate = useNavigate();
 
     useEffect(() => {
         const token = localStorage.getItem("token");
@@ -20,7 +21,7 @@ function ClientDashboard() {
     }, []);
 
     const api = axios.create({
-        baseURL: "http://localhost:8080/api",
+        baseURL:'http://localhost:8088/api',
         headers: {
             Authorization: `Bearer ${localStorage.getItem("token")}`,
         },
@@ -36,12 +37,26 @@ function ClientDashboard() {
         }
     };
 
-    return (
-        <div className="dashboard">
-            <h1>Welcome, {username}</h1>
-            <h2>Your Assigned Devices</h2>
+    const goToMonitoring = () => {
+        navigate("/monitoring");
+    };
 
-            <div className="section">
+    return (
+        <div className="client-container">
+            <h1 className="client-header">Welcome, {username}</h1>
+
+            <div className="button-container">
+                <button 
+                    className="monitoring-button" 
+                    onClick={goToMonitoring}
+                >
+                    View My Energy Consumption
+                </button>
+            </div>
+
+            <h2 className="client-subheader">Your Assigned Devices</h2>
+
+            <div className="device-section">
                 {devices.length === 0 ? (
                     <div className="empty-state">
                         <div className="empty-icon">📟</div>
@@ -49,20 +64,20 @@ function ClientDashboard() {
                         <p>Please contact your administrator for device assignment.</p>
                     </div>
                 ) : (
-                    <table>
+                    <table className="device-table">
                         <thead>
                         <tr>
                             <th>ID</th>
                             <th>Name</th>
                             <th>Description</th>
-                            <th>Consumption</th>
+                            <th>Max Consumption</th>
                             <th>Location</th>
                         </tr>
                         </thead>
                         <tbody>
                         {devices.map((d) => (
                             <tr key={d.id}>
-                                <td className="id-cell">{d.id}</td>
+                                <td>{d.id}</td>
                                 <td>{d.name}</td>
                                 <td>{d.description}</td>
                                 <td>{d.maxConsumption}</td>

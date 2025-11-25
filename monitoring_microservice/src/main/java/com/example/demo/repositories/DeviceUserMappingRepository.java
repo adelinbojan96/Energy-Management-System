@@ -11,4 +11,6 @@ import java.util.UUID;
 public interface DeviceUserMappingRepository extends JpaRepository<DeviceUserMapping, UUID> {
 
     List<DeviceUserMapping> findByUserId(UUID userId);
+
+    void deleteByDeviceId(UUID deviceId);
 }

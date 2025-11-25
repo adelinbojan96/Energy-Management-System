@@ -1,0 +1,1849 @@
+package com.example.demo.config;
+
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.web.servlet.config.annotation.CorsRegistry;
+import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
+
+@Configuration
+public class CorsConfig {
+
+    @Bean
+    public WebMvcConfigurer corsConfigurer() {
+        return new WebMvcConfigurer() {
+            @Override
+            public void addCorsMappings(CorsRegistry registry) {
+                registry.addMapping("/**")
+                        .allowedOrigins(
+                                "http://localhost:5173",   
+                                "http://localhost:8080",
+                                "http://localhost:8088"    
+                        )
+                        .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
+                        .allowedHeaders("*")
+                        .exposedHeaders("*")
+                        .allowCredentials(true);
+            }
+        };
+    }
+}
+
+// java
+package com.example.demo.config;
+
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
+
+@Configuration
+public class PasswordConfig {
+
+    @Bean
+    @Primary
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
+    }
+}
+
+package com.example.demo.config;
+
+import org.springframework.amqp.core.AmqpTemplate;
+import org.springframework.amqp.core.TopicExchange;
+import org.springframework.amqp.rabbit.connection.ConnectionFactory;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter;
+import org.springframework.amqp.support.converter.MessageConverter;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+@Configuration
+public class RabbitConfig {
+
+    @Value("${rabbitmq.exchange.name}")
+    private String syncExchange;
+
+    @Bean
+    public TopicExchange syncExchange() {
+        return new TopicExchange(syncExchange);
+    }
+
+    @Bean
+    public MessageConverter jsonMessageConverter() {
+        return new Jackson2JsonMessageConverter();
+    }
+    
+    @Bean
+    public AmqpTemplate amqpTemplate(ConnectionFactory connectionFactory) {
+        final RabbitTemplate rabbitTemplate = new RabbitTemplate(connectionFactory);
+        rabbitTemplate.setMessageConverter(jsonMessageConverter());
+        return rabbitTemplate;
+    }
+}
+package com.example.demo.config;
+
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import org.springframework.security.web.SecurityFilterChain;
+
+@Configuration
+public class SecurityConfig {
+
+    @Bean
+    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+        http
+                .csrf(AbstractHttpConfigurer::disable)
+                .authorizeHttpRequests(auth -> auth
+                        .requestMatchers(
+                                "/auth/login",
+                                "/auth/register",
+                                "/auth/credentials/**",
+                                "/v3/api-docs/**",
+                                "/swagger-ui.html",
+                                "/swagger-ui/**",
+                                "/webjars/**",
+                                "/favicon.ico"
+                        ).permitAll()
+                        .anyRequest().authenticated()
+                )
+                .cors(cors -> {})
+                .httpBasic(AbstractHttpConfigurer::disable)
+                .formLogin(AbstractHttpConfigurer::disable);
+
+        return http.build();
+    }
+}
+
+package com.example.demo.controllers;
+
+import com.example.demo.dtos.CredentialDTO;
+import com.example.demo.dtos.CredentialDetailsDTO;
+import com.example.demo.services.AuthService;
+import jakarta.validation.Valid;
+import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.Map;
+import java.util.UUID;
+
+@RestController
+@RequestMapping("/auth")
+@Validated
+public class AuthController {
+
+    private final AuthService authService;
+
+    public AuthController(AuthService authService) {
+        this.authService = authService;
+    }
+
+    // register
+    @PostMapping("/register")
+    public ResponseEntity<Map<String, UUID>> register(@Valid @RequestBody CredentialDetailsDTO userDetails) {
+        UUID id = authService.register(userDetails);
+        return ResponseEntity.ok(Map.of("id", id));
+    }
+
+    // login
+    @PostMapping("/login")
+    public ResponseEntity<String> login(@Valid @RequestBody CredentialDTO loginRequest) {
+        String token = authService.login(loginRequest);
+        return ResponseEntity.ok(token);  // return JWT token to frontend
+    }
+
+    //  deletion
+    @DeleteMapping("/credentials/{id}")
+    public ResponseEntity<Void> deleteCredential(@PathVariable UUID id) throws Exception {
+        authService.delete(id);
+        return ResponseEntity.noContent().build();
+    }
+
+}
+
+package com.example.demo.dtos;
+
+import jakarta.validation.constraints.NotBlank;
+
+public class CredentialDetailsDTO {
+
+    @NotBlank(message = "Username/name is required")
+    private String username;
+
+    @NotBlank(message = "Password is required")
+    private String password;
+
+    @NotBlank(message = "Role is required")
+    private String role; // e.g. "ADMIN" or "CLIENT"
+
+    public CredentialDetailsDTO() {}
+
+    public CredentialDetailsDTO(String username, String password, String role) {
+        this.username = username;
+        this.password = password;
+        this.role = role;
+    }
+
+    public String getUsername() { return username; }
+    public void setUsername(String username) { this.username = username; }
+
+    public String getPassword() { return password; }
+    public void setPassword(String password) { this.password = password; }
+
+    public String getRole() { return role; }
+    public void setRole(String role) { this.role = role; }
+}
+
+package com.example.demo.dtos;
+
+import jakarta.validation.constraints.NotBlank;
+
+public class CredentialDTO {
+
+    @NotBlank(message = "Username is required")
+    private String username;
+
+    @NotBlank(message = "Password is required")
+    private String password;
+
+    public CredentialDTO() {}
+
+    public CredentialDTO(String username, String password) {
+        this.username = username;
+        this.password = password;
+    }
+
+    public String getUsername() { return username; }
+    public void setUsername(String username) { this.username = username; }
+
+    public String getPassword() { return password; }
+    public void setPassword(String password) { this.password = password; }
+}
+
+package com.example.demo.entities;
+
+import com.example.demo.security.Role;
+import jakarta.persistence.*;
+
+import java.util.UUID;
+
+@Entity
+@Table(name = "credentials")
+public class Credential {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.UUID)
+    private UUID id;
+
+    @Column(nullable = false, unique = true)
+    private String username;
+
+    @Column(nullable = false)
+    private String password;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private Role role;
+
+    public Credential() {}
+
+    public Credential(String username, String password, Role role) {
+        this.username = username;
+        this.password = password;
+        this.role = role;
+    }
+
+    public UUID getId() { return id; }
+    public void setId(UUID id) { this.id = id; }
+
+    public String getUsername() { return username; }
+    public void setUsername(String username) { this.username = username; }
+
+    public String getPassword() { return password; }
+    public void setPassword(String password) { this.password = password; }
+
+    public Role getRole() { return role; }
+    public void setRole(Role role) { this.role = role; }
+}
+
+package com.example.demo.repositories;
+
+import com.example.demo.entities.Credential;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+
+import java.util.Optional;
+import java.util.UUID;
+
+public interface CredentialRepository extends JpaRepository<Credential, UUID> {
+    @Query("SELECT u FROM Credential u WHERE u.username = :username")
+    Optional<Credential> findByUsername(String username);
+
+}
+
+package com.example.demo.security;
+
+import com.example.demo.entities.Credential;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.SignatureAlgorithm;
+import io.jsonwebtoken.security.Keys;
+import org.springframework.stereotype.Component;
+
+import java.security.Key;
+import java.util.Date;
+
+@Component
+public class JwtUtil {
+
+    private static final String SECRET = "mysecretkey12345678901234567890123456789012";
+    private static final Key SECRET_KEY = Keys.hmacShaKeyFor(SECRET.getBytes());
+
+    private static final long EXPIRATION_TIME = 86400000; // 24 hours
+
+    public String generateToken(Credential credential) {
+        return Jwts.builder()
+                .setSubject(credential.getUsername())
+                .claim("credentialId", credential.getId().toString())
+                .claim("role", credential.getRole().name())
+                .setIssuedAt(new Date())
+                .setExpiration(new Date(System.currentTimeMillis() + EXPIRATION_TIME))
+                .signWith(SECRET_KEY, SignatureAlgorithm.HS256)
+                .compact();
+    }
+}
+
+package com.example.demo.security;
+
+public enum Role {
+    ADMIN,
+    CLIENT
+}
+
+package com.example.demo.services;
+
+import com.example.demo.dtos.CredentialDTO;
+import com.example.demo.dtos.CredentialDetailsDTO;
+import com.example.demo.entities.Credential;
+import com.example.demo.repositories.CredentialRepository;
+import com.example.demo.security.JwtUtil;
+import com.example.demo.security.Role;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.amqp.core.AmqpTemplate;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Optional;
+import java.util.UUID;
+
+@Service
+public class AuthService {
+    private static final Logger LOGGER = LoggerFactory.getLogger(AuthService.class);
+    private final CredentialRepository credentialRepository;
+    private final PasswordEncoder passwordEncoder;
+    private final JwtUtil jwtUtil;
+    private final AmqpTemplate rabbitTemplate;
+
+    @Value("${rabbitmq.exchange.name}")
+    private String syncExchange;
+    
+    @Value("${rabbitmq.routing.key.user.created}") 
+    private String userCreatedRoutingKey;
+
+    public AuthService(CredentialRepository credentialRepository,
+                       PasswordEncoder passwordEncoder,
+                       JwtUtil jwtUtil,
+                       AmqpTemplate rabbitTemplate) {
+        this.credentialRepository = credentialRepository;
+        this.passwordEncoder = passwordEncoder;
+        this.jwtUtil = jwtUtil;
+        this.rabbitTemplate = rabbitTemplate;
+    }
+
+    public UUID register(CredentialDetailsDTO dto) {
+        if (credentialRepository.findByUsername(dto.getUsername()).isPresent()) {
+            throw new RuntimeException("Username already exists");
+        }
+
+        Credential credential = new Credential();
+        credential.setUsername(dto.getUsername());
+        credential.setPassword(passwordEncoder.encode(dto.getPassword()));
+        credential.setRole(Role.valueOf(dto.getRole().toUpperCase()));
+
+        Credential saved = credentialRepository.save(credential);
+        LOGGER.info("Credential {} registered successfully as {}", credential.getUsername(), credential.getRole());
+
+        Map<String, String> syncMessage = new HashMap<>();
+        syncMessage.put("event_type", "USER_CREATED");
+        syncMessage.put("user_id", saved.getId().toString());
+        syncMessage.put("username", saved.getUsername());
+        
+
+        try {
+            rabbitTemplate.convertAndSend(syncExchange, userCreatedRoutingKey, syncMessage); 
+            LOGGER.info("Published USER_CREATED event for user_id: {} with key {}", saved.getId(), userCreatedRoutingKey);
+        } catch (Exception e) {
+            LOGGER.error("Failed to publish USER_CREATED event for user_id: {}", saved.getId(), e);
+        }
+
+        return saved.getId();
+    }
+
+    public String login(CredentialDTO dto) {
+        Credential credential = credentialRepository.findByUsername(dto.getUsername())
+                .orElseThrow(() -> new RuntimeException("Invalid username or password"));
+
+        if (!passwordEncoder.matches(dto.getPassword(), credential.getPassword())) {
+            throw new RuntimeException("Invalid username or password");
+        }
+
+        LOGGER.info("{} logged in as {}", credential.getUsername(), credential.getRole());
+        return jwtUtil.generateToken(credential);
+    }
+
+    public void delete(UUID id) throws Exception {
+        Optional<Credential> verifyCredential = credentialRepository.findById(id);
+
+        if (verifyCredential.isEmpty()) {
+            LOGGER.error("Credential with id {} was not found in db", id);
+            throw new Exception("Credential with id: " + id + " not found");
+        }
+
+        Credential credential = verifyCredential.get();
+        if ("admin".equalsIgnoreCase(credential.getUsername())) {
+            LOGGER.error("Attempted to delete admin credential with id {}", id);
+            throw new Exception("Cannot delete admin credential");
+        }
+
+        credentialRepository.deleteById(id);
+        LOGGER.info("Deleted credential with id {} and username {}", id, credential.getUsername());
+    }
+}
+package com.example.demo.services;
+
+import com.example.demo.entities.Credential;
+import com.example.demo.repositories.CredentialRepository;
+import com.example.demo.security.Role;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.CommandLineRunner;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Component;
+import org.springframework.web.client.RestTemplate;
+
+import java.util.HashMap;
+import java.util.Map;
+
+@Component
+public class DataInitializer implements CommandLineRunner {
+
+    private final CredentialRepository credentialRepository;
+    private final PasswordEncoder passwordEncoder;
+    private final String userServiceUrl;
+
+    public DataInitializer(CredentialRepository credentialRepository,
+                           PasswordEncoder passwordEncoder,
+                           @Value("${user.service.url}") String userServiceUrl) {
+        this.credentialRepository = credentialRepository;
+        this.passwordEncoder = passwordEncoder;
+        this.userServiceUrl = userServiceUrl;
+    }
+
+    @Override
+    public void run(String... args) {
+        if (credentialRepository.count() == 0) {
+            Credential admin = new Credential("admin", passwordEncoder.encode("admin"), Role.ADMIN);
+            Credential saved = credentialRepository.save(admin);
+            System.out.println("Default admin credential created: username='admin', password='admin'");
+
+            try {
+                RestTemplate restTemplate = new RestTemplate();
+
+                Map<String, Object> userPayload = new HashMap<>();
+                userPayload.put("name", "Admin");
+                userPayload.put("age", 30);
+                userPayload.put("email", "admin@system.com");
+                userPayload.put("role", "ADMIN");
+                userPayload.put("credentialId", saved.getId());
+
+                restTemplate.postForObject(userServiceUrl, userPayload, Void.class);
+                System.out.println("Default admin profile created in user service.");
+            } catch (Exception e) {
+                System.err.println("Failed to create admin user in user service: " + e.getMessage());
+            }
+        }
+    }
+}
+
+package com.example.demo.services;
+
+import com.example.demo.entities.Credential;
+import com.example.demo.repositories.CredentialRepository;
+import com.example.demo.security.Role;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.CommandLineRunner;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Component;
+import org.springframework.web.client.RestTemplate;
+
+import java.util.HashMap;
+import java.util.Map;
+
+@Component
+public class DataInitializer implements CommandLineRunner {
+
+    private final CredentialRepository credentialRepository;
+    private final PasswordEncoder passwordEncoder;
+    private final String userServiceUrl;
+
+    public DataInitializer(CredentialRepository credentialRepository,
+                           PasswordEncoder passwordEncoder,
+                           @Value("${user.service.url}") String userServiceUrl) {
+        this.credentialRepository = credentialRepository;
+        this.passwordEncoder = passwordEncoder;
+        this.userServiceUrl = userServiceUrl;
+    }
+
+    @Override
+    public void run(String... args) {
+        if (credentialRepository.count() == 0) {
+            Credential admin = new Credential("admin", passwordEncoder.encode("admin"), Role.ADMIN);
+            Credential saved = credentialRepository.save(admin);
+            System.out.println("Default admin credential created: username='admin', password='admin'");
+
+            try {
+                RestTemplate restTemplate = new RestTemplate();
+
+                Map<String, Object> userPayload = new HashMap<>();
+                userPayload.put("name", "Admin");
+                userPayload.put("age", 30);
+                userPayload.put("email", "admin@system.com");
+                userPayload.put("role", "ADMIN");
+                userPayload.put("credentialId", saved.getId());
+
+                restTemplate.postForObject(userServiceUrl, userPayload, Void.class);
+                System.out.println("Default admin profile created in user service.");
+            } catch (Exception e) {
+                System.err.println("Failed to create admin user in user service: " + e.getMessage());
+            }
+        }
+    }
+}
+
+package com.example.demo;
+
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+
+@SpringBootApplication
+public class DemoApplication {
+
+	public static void main(String[] args) {
+		SpringApplication.run(DemoApplication.class, args);
+	}
+
+}
+
+that was auth
+
+now device:
+package com.example.demo.config;
+
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.web.servlet.config.annotation.CorsRegistry;
+import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
+
+@Configuration
+public class CorsConfig {
+
+    @Bean
+    public WebMvcConfigurer corsConfigurer() {
+        return new WebMvcConfigurer() {
+            @Override
+            public void addCorsMappings(CorsRegistry registry) {
+                registry.addMapping("/**")
+                        .allowedOrigins("*")
+                        .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
+                        .allowedHeaders("*")
+                        .allowCredentials(false);
+            }
+        };
+    }
+}
+package com.example.demo.config;
+
+import org.springframework.amqp.core.*;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter;
+import org.springframework.amqp.support.converter.MessageConverter;
+
+@Configuration
+public class RabbitConfig {
+
+    @Value("${rabbitmq.queue.user.sync}")
+    private String queueName;
+
+    @Value("${rabbitmq.exchange.name}")
+    private String exchange;
+
+    @Value("${rabbitmq.routing.key}")
+    private String routingKey;
+
+    @Bean
+    public Queue userSyncQueue() {
+        return new Queue(queueName, true);
+    }
+
+    @Bean
+    public TopicExchange exchange() {
+        return new TopicExchange(exchange);
+    }
+
+    @Bean
+    public Binding binding(Queue queue, TopicExchange exchange) {
+        return BindingBuilder.bind(queue).to(exchange).with(routingKey);
+    }
+
+    @Bean
+    public MessageConverter converter() {
+        return new Jackson2JsonMessageConverter();
+    }
+}
+package com.example.demo.config;
+
+import io.swagger.v3.oas.models.info.Info;
+import io.swagger.v3.oas.models.OpenAPI;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+@Configuration
+public class SwaggerConfig {
+
+    @Bean
+    public OpenAPI baseOpenAPI() {
+        return new OpenAPI().info(new Info()
+                .title("Device Microservice API")
+                .version("1.0.0")
+                .description("Endpoints for managing devices in the Energy Management System"));
+    }
+}
+
+package com.example.demo.controllers;
+
+import com.example.demo.dtos.DeviceDTO;
+import com.example.demo.dtos.DeviceDetailsDTO;
+import com.example.demo.services.DeviceService;
+import com.example.demo.dtos.SyncEventDTO;
+import jakarta.validation.Valid;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
+
+import java.net.URI;
+import java.util.List;
+import java.util.UUID;
+
+@RestController
+@RequestMapping("/device")
+@Validated
+public class DeviceController {
+
+    private final DeviceService deviceService;
+    private final RabbitTemplate rabbitTemplate;
+
+    @Value("${rabbitmq.exchange.name}")
+    private String exchange;
+
+    @Value("${rabbitmq.routing.key.device}")
+    private String deviceRoutingKey;
+
+    public DeviceController(DeviceService deviceService, RabbitTemplate rabbitTemplate) {
+        this.deviceService = deviceService;
+        this.rabbitTemplate = rabbitTemplate;
+    }
+
+    @GetMapping
+    public ResponseEntity<List<DeviceDTO>> getDevices() {
+        return ResponseEntity.ok(deviceService.findDevices());
+    }
+
+    @PostMapping
+    public ResponseEntity<Void> create(@Valid @RequestBody DeviceDetailsDTO device) {
+        UUID id = deviceService.insert(device);
+
+        try {
+            SyncEventDTO syncMsg = new SyncEventDTO();
+            syncMsg.setEventType("DEVICE_CREATED");
+            syncMsg.setDeviceId(id);
+            syncMsg.setUserId(device.getUserId());
+            syncMsg.setMaxConsumption(device.getMaxConsumption());
+
+            rabbitTemplate.convertAndSend(exchange, deviceRoutingKey, syncMsg);
+            System.out.println("Sent Sync Create Message for Device: " + id);
+
+        } catch (Exception e) {
+            System.err.println("Error sending sync message: " + e.getMessage());
+        }
+
+        URI location = ServletUriComponentsBuilder
+                .fromCurrentRequest()
+                .path("/{id}")
+                .buildAndExpand(id)
+                .toUri();
+        return ResponseEntity.created(location).build();
+    }
+
+    public record AssignRequest(UUID deviceId, UUID userId) {}
+
+    @PostMapping("/assign")
+    public ResponseEntity<Void> assignDeviceToUserPost(@Valid @RequestBody AssignRequest req) {
+        deviceService.assignDeviceToUser(req.deviceId(), req.userId());
+        return ResponseEntity.noContent().build();
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<DeviceDTO> updateDevice(@PathVariable UUID id, @RequestBody DeviceDTO updatedDevice) {
+        DeviceDTO device = deviceService.update(id, updatedDevice);
+        return ResponseEntity.ok(device);
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<DeviceDetailsDTO> getDevice(@PathVariable UUID id) {
+        return ResponseEntity.ok(deviceService.findDeviceById(id));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteDevice(@PathVariable UUID id) {
+        deviceService.delete(id);
+
+        try {
+            SyncEventDTO syncMsg = new SyncEventDTO();
+            syncMsg.setEventType("DEVICE_DELETED");
+            syncMsg.setDeviceId(id);
+
+            rabbitTemplate.convertAndSend(exchange, deviceRoutingKey, syncMsg);
+            System.out.println("Sent Sync Delete Message for Device: " + id);
+
+        } catch (Exception e) {
+            System.err.println("Error sending delete sync message: " + e.getMessage());
+        }
+
+        return ResponseEntity.noContent().build();
+    }
+}
+package com.example.demo.dtos.builders;
+
+import com.example.demo.dtos.DeviceDTO;
+import com.example.demo.dtos.DeviceDetailsDTO;
+import com.example.demo.entities.Device;
+
+public class DeviceBuilder {
+
+    private DeviceBuilder() {
+    }
+
+    public static DeviceDTO toDeviceDTO(Device device) {
+        return new DeviceDTO(
+                device.getId(),
+                device.getName(),
+                device.getDescription(),
+                device.getMaxConsumption(),
+                device.getLocation()
+        );
+    }
+
+    public static DeviceDetailsDTO toDeviceDetailsDTO(Device device) {
+        return new DeviceDetailsDTO(
+                device.getId(),
+                device.getName(),
+                device.getDescription(),
+                device.getMaxConsumption(),
+                device.getLocation(),
+                device.getUserId()
+        );
+    }
+
+    public static Device toEntity(DeviceDetailsDTO dto) {
+        return new Device(
+                dto.getName(),
+                dto.getDescription(),
+                dto.getMaxConsumption(),
+                dto.getLocation(),
+                dto.getUserId()
+        );
+    }
+}
+
+package com.example.demo.dtos;
+
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+
+import java.util.Objects;
+import java.util.UUID;
+
+public class DeviceDetailsDTO {
+
+    private UUID id;
+
+    @NotBlank(message = "Name is required")
+    private String name;
+
+    private String description;
+
+    @NotNull(message = "Max consumption is required")
+    private Double maxConsumption;
+
+    private String location;
+
+    private UUID userId;
+
+    public DeviceDetailsDTO() {
+    }
+
+    public DeviceDetailsDTO(UUID id, String name, String description, Double maxConsumption, String location, UUID userId) {
+        this.id = id;
+        this.name = name;
+        this.description = description;
+        this.maxConsumption = maxConsumption;
+        this.location = location;
+        this.userId = userId;
+    }
+
+    public DeviceDetailsDTO(String name, String description, Double maxConsumption, String location, UUID userId) {
+        this.name = name;
+        this.description = description;
+        this.maxConsumption = maxConsumption;
+        this.location = location;
+        this.userId = userId;
+    }
+
+    public UUID getId() {
+        return id;
+    }
+    public void setId(UUID id) {
+        this.id = id;
+    }
+    public String getName() {
+        return name;
+    }
+    public void setName(String name) {
+        this.name = name;
+    }
+    public String getDescription() {
+        return description;
+    }
+    public void setDescription(String description) {
+        this.description = description;
+    }
+    public Double getMaxConsumption() {
+        return maxConsumption;
+    }
+    public void setMaxConsumption(Double maxConsumption) {
+        this.maxConsumption = maxConsumption;
+    }
+    public String getLocation() {
+        return location;
+    }
+    public void setLocation(String location) {
+        this.location = location;
+    }
+    public UUID getUserId() {
+        return userId;
+    }
+    public void setUserId(UUID userId) {
+        this.userId = userId;
+    }
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        DeviceDetailsDTO that = (DeviceDetailsDTO) o;
+        return Objects.equals(name, that.name) &&
+                Objects.equals(description, that.description) &&
+                Objects.equals(maxConsumption, that.maxConsumption) &&
+                Objects.equals(location, that.location) &&
+                Objects.equals(userId, that.userId);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(name, description, maxConsumption, location, userId);
+    }
+}
+
+package com.example.demo.dtos;
+
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+
+import java.util.UUID;
+
+public class DeviceDTO {
+
+    private UUID id;
+
+    @NotBlank(message = "Name is required")
+    private String name;
+
+    @NotNull(message = "Max consumption is required")
+    private Double maxConsumption;
+
+    private String description;
+
+    private String location;
+
+    public DeviceDTO() {
+    }
+
+    public DeviceDTO(UUID id, String name, String description, Double maxConsumption, String location) {
+        this.id = id;
+        this.name = name;
+        this.description = description;
+        this.maxConsumption = maxConsumption;
+        this.location = location;
+    }
+
+    public UUID getId() {
+        return id;
+    }
+
+    public void setId(UUID id) {
+        this.id = id;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public Double getMaxConsumption() {
+        return maxConsumption;
+    }
+
+    public void setMaxConsumption(Double maxConsumption) {
+        this.maxConsumption = maxConsumption;
+    }
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
+    }
+
+    public String getLocation() {
+        return location;
+    }
+
+    public void setLocation(String location) {
+        this.location = location;
+    }
+}
+
+package com.example.demo.dtos;
+
+import com.fasterxml.jackson.annotation.JsonProperty;
+import java.util.UUID;
+
+@com.fasterxml.jackson.annotation.JsonIgnoreProperties(ignoreUnknown = true)
+public class SyncEventDTO {
+
+    @JsonProperty("event_type")
+    private String eventType;
+
+    @JsonProperty("user_id")
+    private UUID userId;
+
+    @JsonProperty("device_id")
+    private UUID deviceId;
+
+    @JsonProperty("max_consumption")
+    private Double maxConsumption;
+
+    public String getEventType() { return eventType; }
+    public void setEventType(String eventType) { this.eventType = eventType; }
+
+    public UUID getUserId() { return userId; }
+    public void setUserId(UUID userId) { this.userId = userId; }
+
+    public UUID getDeviceId() { return deviceId; }
+    public void setDeviceId(UUID deviceId) { this.deviceId = deviceId; }
+
+    public Double getMaxConsumption() { return maxConsumption; }
+    public void setMaxConsumption(Double maxConsumption) { this.maxConsumption = maxConsumption; }
+}
+package com.example.demo.dtos;
+
+import java.util.UUID;
+
+public class UserSyncDTO {
+    private UUID userId;
+    private String action; // "CREATE", "UPDATE", "DELETE"
+
+    public UserSyncDTO() {}
+
+    public UserSyncDTO(UUID userId, String action) {
+        this.userId = userId;
+        this.action = action;
+    }
+
+    public UUID getUserId() { return userId; }
+    public void setUserId(UUID userId) { this.userId = userId; }
+    public String getAction() { return action; }
+    public void setAction(String action) { this.action = action; }
+}
+package com.example.demo.entities;
+
+import jakarta.persistence.*;
+import java.io.Serial;
+import java.io.Serializable;
+import java.util.UUID;
+
+@Entity
+@Table(name = "devices")
+public class Device implements Serializable {
+
+    @Serial
+    private static final long serialVersionUID = 1L;
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.UUID)
+    private UUID id;
+
+    @Column(name = "name", nullable = false, length = 100)
+    private String name;
+
+    @Column(name = "description")
+    private String description;
+
+    @Column(name = "max_consumption", nullable = false)
+    private Double maxConsumption;
+
+    @Column(name = "location", length = 100)
+    private String location;
+
+    @Column(name = "user_id")
+    private UUID userId;
+
+    public Device() {
+    }
+
+    public Device(String name, String description, Double maxConsumption, String location, UUID userId) {
+        this.name = name;
+        this.description = description;
+        this.maxConsumption = maxConsumption;
+        this.location = location;
+        this.userId = userId;
+    }
+
+    public UUID getId() {
+        return id;
+    }
+
+    public void setId(UUID id) {
+        this.id = id;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
+    }
+
+    public Double getMaxConsumption() {
+        return maxConsumption;
+    }
+
+    public void setMaxConsumption(Double maxConsumption) {
+        this.maxConsumption = maxConsumption;
+    }
+
+    public String getLocation() {
+        return location;
+    }
+
+    public void setLocation(String location) {
+        this.location = location;
+    }
+
+    public UUID getUserId() {
+        return userId;
+    }
+
+    public void setUserId(UUID userId) {
+        this.userId = userId;
+    }
+}
+
+package com.example.demo.services;
+
+
+import com.example.demo.dtos.DeviceDTO;
+import com.example.demo.dtos.DeviceDetailsDTO;
+import com.example.demo.dtos.builders.DeviceBuilder;
+import com.example.demo.entities.Device;
+import com.example.demo.handlers.exceptions.model.ResourceNotFoundException;
+import com.example.demo.repositories.DeviceRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+import java.util.stream.Collectors;
+
+@Service
+public class DeviceService {
+    private static final Logger LOGGER = LoggerFactory.getLogger(DeviceService.class);
+    private final DeviceRepository deviceRepository;
+
+    @Autowired
+    public DeviceService(DeviceRepository deviceRepository) {
+        this.deviceRepository = deviceRepository;
+    }
+
+    public List<DeviceDTO> findDevices() {
+        List<Device> userList = deviceRepository.findAll();
+        return userList.stream()
+                .map(DeviceBuilder::toDeviceDTO)
+                .collect(Collectors.toList());
+    }
+
+    public DeviceDetailsDTO findDeviceById(UUID id) {
+        Optional<Device> prosumerOptional = deviceRepository.findById(id);
+        if (prosumerOptional.isEmpty()) {
+            LOGGER.error("Device with id {} was not found in db", id);
+            throw new ResourceNotFoundException(Device.class.getSimpleName() + " with id: " + id);
+        }
+        return DeviceBuilder.toDeviceDetailsDTO(prosumerOptional.get());
+    }
+
+    public UUID insert(DeviceDetailsDTO personDTO) {
+        Device device = DeviceBuilder.toEntity(personDTO);
+        device = deviceRepository.save(device);
+        LOGGER.debug("Person with id {} was inserted in db", device.getId());
+        return device.getId();
+    }
+
+    public void delete(UUID id) {
+        Optional<Device> deviceOptional = deviceRepository.findById(id);
+        if (deviceOptional.isEmpty()) {
+            LOGGER.error("Device with id {} not found", id);
+            throw new ResourceNotFoundException(Device.class.getSimpleName() + " with id: " + id);
+        }
+
+        deviceRepository.deleteById(id);
+        LOGGER.info("Deleted device with id {}", id);
+    }
+    public DeviceDTO update(UUID id, DeviceDTO updatedDevice) {
+        Device existing = deviceRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Device not found"));
+
+        existing.setName(updatedDevice.getName());
+        existing.setDescription(updatedDevice.getDescription());
+        existing.setMaxConsumption(updatedDevice.getMaxConsumption());
+        existing.setLocation(updatedDevice.getLocation());
+
+        deviceRepository.save(existing);
+        return DeviceBuilder.toDeviceDTO(existing);
+    }
+
+    public void assignDeviceToUser(UUID deviceId, UUID userId) {
+        Optional<Device> deviceOptional = deviceRepository.findById(deviceId);
+        if (deviceOptional.isEmpty()) {
+            LOGGER.error("Device with the id {} not found", deviceId);
+            throw new ResourceNotFoundException(Device.class.getSimpleName() + " with id: " + deviceId);
+        }
+
+        Device device = deviceOptional.get();
+        device.setUserId(userId);
+        deviceRepository.save(device);
+        LOGGER.info("Assigned device with id {} to user with id {}", deviceId, userId);
+    }
+}
+
+package com.example.demo.services;
+
+import org.springframework.amqp.rabbit.annotation.RabbitListener;
+import org.springframework.stereotype.Service;
+import com.example.demo.dtos.UserSyncDTO;
+
+@Service
+public class UserSyncConsumer {
+
+    @RabbitListener(queues = "${rabbitmq.queue.user.sync}")
+    public void consumeUserSync(UserSyncDTO message) {
+        System.out.println("Device Service received User Sync: " + message.getUserId());
+    }
+}
+that was device
+
+now monitoring:
+package com.example.demo.config;
+
+import org.springframework.amqp.core.*;
+import org.springframework.amqp.rabbit.connection.ConnectionFactory;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter;
+import org.springframework.amqp.support.converter.MessageConverter;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+@Configuration
+public class RabbitConfig {
+
+    @Value("${rabbitmq.exchange.name}")
+    private String syncExchange;
+
+    @Value("${rabbitmq.queue.data}")
+    private String dataQueue;
+
+    @Value("${rabbitmq.queue.sync.monitoring}")
+    private String monitoringSyncQueue;
+
+    @Value("${rabbitmq.routing.key.data}")
+    private String dataRoutingKey;
+
+    @Bean
+    public Queue dataQueue() {
+        return new Queue(dataQueue, true, false, false);
+    }
+
+    @Bean
+    public Queue monitoringSyncQueue() {
+        return new Queue(monitoringSyncQueue, true, false, false);
+    }
+
+    @Bean
+    public TopicExchange syncExchange() {
+        return new TopicExchange(syncExchange);
+    }
+
+    @Bean
+    public Binding syncEventsBinding(Queue monitoringSyncQueue, TopicExchange syncExchange) {
+        return BindingBuilder.bind(monitoringSyncQueue).to(syncExchange).with("#");
+    }
+
+    @Bean
+    public Binding dataBinding(Queue dataQueue, TopicExchange syncExchange) {
+        return BindingBuilder.bind(dataQueue).to(syncExchange).with(dataRoutingKey);
+    }
+
+    @Bean
+    public MessageConverter jsonMessageConverter() {
+        return new Jackson2JsonMessageConverter();
+    }
+
+    @Bean
+    public AmqpTemplate amqpTemplate(ConnectionFactory connectionFactory) {
+        RabbitTemplate rabbitTemplate = new RabbitTemplate(connectionFactory);
+        rabbitTemplate.setMessageConverter(jsonMessageConverter());
+        return rabbitTemplate;
+    }
+}
+
+package com.example.demo.controllers;
+
+import com.example.demo.dtos.HourlyConsumptionDTO;
+import com.example.demo.services.MonitoringService;
+import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.web.bind.annotation.*;
+
+import java.time.LocalDate;
+import java.util.List;
+import java.util.UUID;
+
+@RestController
+@RequestMapping("/api/monitoring")
+@CrossOrigin(origins = "*") 
+public class MonitoringController {
+
+    private final MonitoringService monitoringService;
+
+    public MonitoringController(MonitoringService monitoringService) {
+        this.monitoringService = monitoringService;
+    }
+
+    @GetMapping("/consumption")
+    public ResponseEntity<List<HourlyConsumptionDTO>> getDailyConsumption(
+            @RequestParam("date") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        Jwt jwt = (Jwt) authentication.getPrincipal();
+        
+        String idString = jwt.getClaimAsString("userId"); 
+        
+        if (idString == null) idString = jwt.getClaimAsString("id");
+
+        UUID userId = UUID.fromString(idString);
+
+        List<HourlyConsumptionDTO> data = monitoringService.getChartDataForUser(userId, date);
+        return ResponseEntity.ok(data);
+    }
+}
+package com.example.demo.dtos;
+
+public class HourlyConsumptionDTO {
+
+    private int hour;
+    private double consumption;
+
+    public HourlyConsumptionDTO(int hour, double consumption) {
+        this.hour = hour;
+        this.consumption = consumption;
+    }
+
+    public int getHour() {
+        return hour;
+    }
+
+    public void setHour(int hour) {
+        this.hour = hour;
+    }
+
+    public double getConsumption() {
+        return consumption;
+    }
+
+    public void setConsumption(double consumption) {
+        this.consumption = consumption;
+    }
+}
+package com.example.demo.dtos;
+
+import com.fasterxml.jackson.annotation.JsonProperty;
+import java.util.UUID;
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+
+@com.fasterxml.jackson.annotation.JsonIgnoreProperties(ignoreUnknown = true)
+public class MeasurementDTO {
+
+    private Long timestamp;
+
+    @JsonProperty("device_id")
+    private UUID deviceId;
+
+    @JsonProperty("measurement_value")
+    private Double value;
+
+    public LocalDateTime getLocalDateTime() {
+        if (timestamp == null) return null;
+        return Instant.ofEpochMilli(timestamp)
+                .atZone(ZoneId.systemDefault())
+                .toLocalDateTime();
+    }
+
+
+    public Long getTimestamp() {
+        return timestamp;
+    }
+
+    public void setTimestamp(Long timestamp) {
+        this.timestamp = timestamp;
+    }
+
+    public UUID getDeviceId() {
+        return deviceId;
+    }
+
+    public void setDeviceId(UUID deviceId) {
+        this.deviceId = deviceId;
+    }
+
+    public Double getValue() {
+        return value;
+    }
+
+    public void setValue(Double value) {
+        this.value = value;
+    }
+}
+package com.example.demo.dtos;
+
+import com.fasterxml.jackson.annotation.JsonProperty;
+import java.util.UUID;
+
+@com.fasterxml.jackson.annotation.JsonIgnoreProperties(ignoreUnknown = true)
+public class SyncEventDTO {
+
+    @JsonProperty("event_type")
+    private String eventType;
+
+    @JsonProperty("user_id")
+    private UUID userId;
+
+    @JsonProperty("device_id")
+    private UUID deviceId;
+    
+    @JsonProperty("max_consumption")
+    private Double maxConsumption;    
+
+    public Double getMaxConsumption()
+    {
+        return maxConsumption;
+    }
+
+    public String getEventType() {
+        return eventType;
+    }
+
+    public void setEventType(String eventType) {
+        this.eventType = eventType;
+    }
+
+    public UUID getUserId() {
+        return userId;
+    }
+
+    public void setUserId(UUID userId) {
+        this.userId = userId;
+    }
+
+    public UUID getDeviceId() {
+        return deviceId;
+    }
+
+    public void setDeviceId(UUID deviceId) {
+        this.deviceId = deviceId;
+    }
+    
+    public void setMaxConsumption(Double maxConsumption) {
+        this.maxConsumption = maxConsumption;
+    }
+}
+package com.example.demo.entities;
+
+import jakarta.persistence.*;
+import java.util.UUID;
+
+@Entity
+@Table(uniqueConstraints = {
+        @UniqueConstraint(columnNames = {"deviceId", "userId"})
+})
+public class DeviceUserMapping {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.AUTO)
+    private UUID id;
+
+    @Column(nullable = false)
+    private UUID deviceId;
+
+    @Column(nullable = false)
+    private UUID userId;
+
+    @Column(name = "max_consumption")
+    private Double maxConsumption;
+
+    public DeviceUserMapping() {}
+
+    public DeviceUserMapping(UUID deviceId, UUID userId) {
+        this.deviceId = deviceId;
+        this.userId = userId;
+    }
+
+    public UUID getId() {
+        return id;
+    }
+
+    public void setId(UUID id) {
+        this.id = id;
+    }
+
+    public UUID getDeviceId() {
+        return deviceId;
+    }
+
+    public void setDeviceId(UUID deviceId) {
+        this.deviceId = deviceId;
+    }
+
+    public UUID getUserId() {
+        return userId;
+    }
+
+    public void setUserId(UUID userId) {
+        this.userId = userId;
+    }
+
+    public Double getMaxConsumption() {
+        return maxConsumption;
+    }
+
+    public void setMaxConsumption(Double maxConsumption) {
+        this.maxConsumption = maxConsumption;
+    }
+}
+
+package com.example.demo.entities;
+
+import jakarta.persistence.*;
+import java.time.LocalDateTime;
+import java.util.UUID;
+
+@Entity
+public class HourlyConsumption {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.AUTO)
+    private UUID id;
+
+    @Column(nullable = false)
+    private UUID deviceId;
+
+    @Column(nullable = false)
+    private LocalDateTime timestamp;
+
+    @Column(nullable = false)
+    private Double totalConsumption;
+
+    public HourlyConsumption() {}
+
+    public HourlyConsumption(UUID deviceId, LocalDateTime timestamp, Double totalConsumption) {
+        this.deviceId = deviceId;
+        this.timestamp = timestamp;
+        this.totalConsumption = totalConsumption;
+    }
+
+    public UUID getId() {
+        return id;
+    }
+
+    public void setId(UUID id) {
+        this.id = id;
+    }
+
+    public UUID getDeviceId() {
+        return deviceId;
+    }
+
+    public void setDeviceId(UUID deviceId) {
+        this.deviceId = deviceId;
+    }
+
+    public LocalDateTime getTimestamp() {
+        return timestamp;
+    }
+
+    public void setTimestamp(LocalDateTime timestamp) {
+        this.timestamp = timestamp;
+    }
+
+    public Double getTotalConsumption() {
+        return totalConsumption;
+    }
+
+    public void setTotalConsumption(Double totalConsumption) {
+        this.totalConsumption = totalConsumption;
+    }
+}
+package com.example.demo.repositories;
+
+import com.example.demo.entities.DeviceUserMapping;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+
+import java.util.List;
+import java.util.UUID;
+
+@Repository
+public interface DeviceUserMappingRepository extends JpaRepository<DeviceUserMapping, UUID> {
+
+    List<DeviceUserMapping> findByUserId(UUID userId);
+
+    void deleteByDeviceId(UUID deviceId);
+}
+package com.example.demo.repositories;
+
+import com.example.demo.entities.HourlyConsumption;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+
+@Repository
+public interface HourlyConsumptionRepository extends JpaRepository<HourlyConsumption, UUID> {
+
+    Optional<HourlyConsumption> findByDeviceIdAndTimestamp(UUID deviceId, LocalDateTime timestamp);
+
+    List<HourlyConsumption> findByDeviceIdInAndTimestampBetween(List<UUID> deviceIds, LocalDateTime start, LocalDateTime end);
+}
+
+package com.example.demo.services;
+
+import com.example.demo.dtos.HourlyConsumptionDTO;
+import com.example.demo.dtos.MeasurementDTO;
+import com.example.demo.dtos.SyncEventDTO;
+import com.example.demo.entities.DeviceUserMapping;
+import com.example.demo.entities.HourlyConsumption;
+import com.example.demo.repositories.DeviceUserMappingRepository;
+import com.example.demo.repositories.HourlyConsumptionRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.amqp.rabbit.annotation.RabbitListener;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.temporal.ChronoUnit;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+import java.util.stream.Collectors;
+
+@Service
+public class MonitoringService {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(MonitoringService.class);
+
+    private final HourlyConsumptionRepository consumptionRepo;
+    private final DeviceUserMappingRepository mappingRepo;
+
+    public MonitoringService(HourlyConsumptionRepository consumptionRepo, DeviceUserMappingRepository mappingRepo) {
+        this.consumptionRepo = consumptionRepo;
+        this.mappingRepo = mappingRepo;
+    }
+
+    @RabbitListener(queues = "${rabbitmq.queue.data}")
+    @Transactional
+    public void consumeMeasurement(MeasurementDTO message) {
+        LocalDateTime actualTimestamp = message.getLocalDateTime();
+
+        if (actualTimestamp == null || message.getDeviceId() == null || message.getValue() == null) {
+            LOGGER.error("Received invalid measurement message: {}", message);
+            return;
+        }
+
+        LOGGER.debug("Received measurement for device {}: {}", message.getDeviceId(), message.getValue());
+
+        LocalDateTime truncatedTimestamp = actualTimestamp.truncatedTo(ChronoUnit.HOURS);
+        UUID deviceId = message.getDeviceId();
+
+        Optional<HourlyConsumption> existingRecord = consumptionRepo.findByDeviceIdAndTimestamp(deviceId, truncatedTimestamp);
+
+        if (existingRecord.isPresent()) {
+            HourlyConsumption record = existingRecord.get();
+            record.setTotalConsumption(record.getTotalConsumption() + message.getValue());
+            consumptionRepo.save(record);
+            LOGGER.info("Updated consumption for device {}. Hour: {}, New Total: {}", deviceId, truncatedTimestamp, record.getTotalConsumption());
+            
+        } else {
+            HourlyConsumption newRecord = new HourlyConsumption(deviceId, truncatedTimestamp, message.getValue());
+            consumptionRepo.save(newRecord);
+            LOGGER.info("Created new consumption record for device {}. Hour: {}", deviceId, truncatedTimestamp);
+        }
+    }
+
+    @RabbitListener(queues = "${rabbitmq.queue.sync.monitoring}")
+    @Transactional
+    public void consumeSyncEvent(SyncEventDTO event) {
+        LOGGER.info("Received sync event: {} for Device: {}", event.getEventType(), event.getDeviceId());
+
+        if (event.getDeviceId() == null) {
+            LOGGER.warn("Received sync event with null Device ID");
+            return;
+        }
+
+        switch (event.getEventType()) {
+            case "DEVICE_CREATED":
+            case "DEVICE_MAPPED": 
+            case "DEVICE_UPDATED":
+                handleUpsertDevice(event);
+                break;
+
+            case "DEVICE_DELETED":
+                handleDeleteDevice(event.getDeviceId());
+                break;
+
+            default:
+                LOGGER.debug("Ignored event type: {}", event.getEventType());
+                break;
+        }
+    }
+
+    private void handleUpsertDevice(SyncEventDTO event) {
+        if (event.getUserId() == null) {
+            LOGGER.warn("Cannot map device {} without a User ID", event.getDeviceId());
+            return;
+        }
+        
+        DeviceUserMapping mapping = new DeviceUserMapping();
+        mapping.setDeviceId(event.getDeviceId());
+        mapping.setUserId(event.getUserId());
+        
+        if (event.getMaxConsumption() != null) {
+             mapping.setMaxConsumption(event.getMaxConsumption());
+        }
+
+        try {
+            mappingRepo.save(mapping);
+            LOGGER.info("Synced mapping for Device {} to User {}", event.getDeviceId(), event.getUserId());
+        } catch (Exception e) {
+            LOGGER.error("Failed to save device mapping: {}", e.getMessage());
+        }
+    }
+
+    private void handleDeleteDevice(UUID deviceId) {
+        LOGGER.info("Processed DELETE sync for device {}", deviceId);
+
+    }
+
+    public List<HourlyConsumptionDTO> getChartDataForUser(UUID userId, LocalDate date) {
+        List<DeviceUserMapping> mappings = mappingRepo.findByUserId(userId);
+        if (mappings.isEmpty()) {
+            return List.of();
+        }
+
+        List<UUID> deviceIds = mappings.stream()
+                .map(DeviceUserMapping::getDeviceId)
+                .collect(Collectors.toList());
+
+        LocalDateTime startOfDay = date.atStartOfDay();
+        LocalDateTime endOfDay = date.atTime(LocalTime.MAX);
+
+        List<HourlyConsumption> consumptions = consumptionRepo.findByDeviceIdInAndTimestampBetween(deviceIds, startOfDay, endOfDay);
+        
+        return consumptions.stream()
+                .collect(Collectors.groupingBy(
+                        c -> c.getTimestamp().getHour(),
+                        Collectors.summingDouble(HourlyConsumption::getTotalConsumption)
+                ))
+                .entrySet().stream()
+                .map(entry -> new HourlyConsumptionDTO(entry.getKey(), entry.getValue()))
+                .sorted(Comparator.comparingInt(HourlyConsumptionDTO::getHour))
+                .collect(Collectors.toList());
+    }
+}
+and the device simulator:
+package org.example;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.rabbitmq.client.Channel;
+import com.rabbitmq.client.Connection;
+import com.rabbitmq.client.ConnectionFactory;
+
+import java.io.InputStream;
+import java.util.Properties;
+import java.util.Random;
+import java.util.UUID;
+import java.util.concurrent.TimeUnit;
+import java.time.LocalDateTime; 
+
+public class Simulator {
+
+
+    public static void main(String[] args) {
+        System.out.println("--- Energy Data Simulator Started ---");
+
+        try {
+            Properties props = new Properties();
+            try (InputStream input = Simulator.class.getClassLoader().getResourceAsStream("config.properties")) {
+                if (input == null) {
+                    System.err.println("Error: Unable to find config.properties");
+                    return;
+                }
+                props.load(input);
+            }
+
+            String deviceId = props.getProperty("device.id");
+            String host = props.getProperty("rabbitmq.host");
+            String exchangeName = props.getProperty("rabbitmq.exchange.name");
+            String routingKeyData = props.getProperty("rabbitmq.routing.key.data");
+
+            if (deviceId == null || host == null || exchangeName == null || routingKeyData == null) {
+                System.err.println("Error: Missing RabbitMQ/Device properties in config.properties");
+                return;
+            }
+
+            ConnectionFactory factory = new ConnectionFactory();
+            factory.setHost(host);
+            factory.setPort(5672);
+            factory.setUsername("guest");
+            factory.setPassword("guest");
+
+            try (Connection connection = factory.newConnection();
+                 Channel channel = connection.createChannel()) {
+                
+                channel.exchangeDeclare(exchangeName, "topic", true); 
+
+                ObjectMapper mapper = new ObjectMapper();
+                Random random = new Random();
+                double currentConsumption = 5.0; 
+                
+                final long INTERVAL_SECONDS = 5; 
+
+                System.out.println("Sending data for Device ID: " + deviceId);
+                System.out.println("Publishing to Exchange: " + exchangeName + ", Key: " + routingKeyData);
+                
+                while (true) {
+                    long timestamp = System.currentTimeMillis();
+                    
+                    double fluctuation = (random.nextDouble() - 0.5) * 0.5; 
+                    currentConsumption += fluctuation;
+                    if (currentConsumption < 0.1) currentConsumption = 0.1;
+
+                    Measurement measurement = new Measurement(
+                            timestamp,
+                            UUID.fromString(deviceId),
+
+                            random.nextDouble() * 1.4 + 0.1 
+                    );
+
+                    String json = mapper.writeValueAsString(measurement);
+
+                    channel.basicPublish(exchangeName, routingKeyData, null, json.getBytes());
+                    
+                    System.out.println(" [x] Sent at " + LocalDateTime.now() + ": " + json);
+                    TimeUnit.SECONDS.sleep(INTERVAL_SECONDS); 
+                }
+            }
+
+        } catch (Exception e) {
+            System.err.println("Simulator Error: " + e.getMessage());
+        }
+    }
+
+    record Measurement(long timestamp, UUID device_id, double measurement_value) {}
+}
