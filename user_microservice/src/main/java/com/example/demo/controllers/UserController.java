@@ -35,6 +35,15 @@ public class UserController {
         this.rabbitTemplate = rabbitTemplate;
     }
 
+    @GetMapping("/by-credential/{credentialId}")
+    public ResponseEntity<UserDetailsDTO> getUserByCredential(@PathVariable UUID credentialId) {
+        return ResponseEntity.ok(userService.findPersonByCredentialId(credentialId));
+    }
+    
+    @GetMapping("/by-username/{username}")
+    public ResponseEntity<UserDetailsDTO> getUserByName(@PathVariable String username) {
+        return ResponseEntity.ok(userService.findPersonByName(username));
+    }
     @GetMapping
     public ResponseEntity<List<UserDTO>> getUsers() {
         return ResponseEntity.ok(userService.findPersons());

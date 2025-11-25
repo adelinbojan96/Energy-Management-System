@@ -12,7 +12,6 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/monitoring")
-// Lăsăm cross origin pentru siguranță, deși gateway-ul rezolvă
 @CrossOrigin(origins = "*") 
 public class MonitoringController {
 

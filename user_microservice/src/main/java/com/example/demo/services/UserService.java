@@ -44,6 +44,24 @@ public class UserService {
         return UserBuilder.toPersonDetailsDTO(prosumerOptional.get());
     }
 
+    public UserDetailsDTO findPersonByCredentialId(UUID credentialId) {
+        Optional<User> prosumerOptional = userRepository.findByCredentialId(credentialId);
+        if (prosumerOptional.isEmpty()) {
+            LOGGER.error("Person with credentialId {} was not found in db", credentialId);
+            throw new ResourceNotFoundException(User.class.getSimpleName() + " with credentialId: " + credentialId);
+        }
+        return UserBuilder.toPersonDetailsDTO(prosumerOptional.get());
+    }
+
+    public UserDetailsDTO findPersonByName(String name) {
+        Optional<User> prosumerOptional = userRepository.findByName(name);
+        if (prosumerOptional.isEmpty()) {
+            LOGGER.error("Person with name {} was not found in db", name);
+            throw new ResourceNotFoundException(User.class.getSimpleName() + " with name: " + name);
+        }
+        return UserBuilder.toPersonDetailsDTO(prosumerOptional.get());
+    }
+
     public UUID insert(UserDetailsDTO personDTO) {
         User user = UserBuilder.toEntity(personDTO);
         user = userRepository.save(user);

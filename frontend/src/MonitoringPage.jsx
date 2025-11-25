@@ -13,9 +13,7 @@ const MonitoringPage = () => {
     const [error, setError] = useState(null);
 
     const fetchHourlyData = async () => {
-        // 1. Citim datele din LocalStorage
         const token = localStorage.getItem("token");
-        // IMPORTANT: Luăm userId-ul salvat la login
         const userId = localStorage.getItem("userId"); 
 
         if (!token) {

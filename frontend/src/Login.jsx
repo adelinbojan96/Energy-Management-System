@@ -25,15 +25,21 @@ function Login() {
             localStorage.setItem("token", token);
 
             const decoded = JSON.parse(atob(token.split(".")[1]));
-            console.log("Token Decodat:", decoded);
             
-            const role = decoded.role || "CLIENT";
-            
-            const userId = decoded.id || decoded.userId; 
-            if (userId) {
-                localStorage.setItem("userId", userId);
-            }
+            const credentialId = decoded.credentialId; 
+            console.log("Credential ID din token:", credentialId);
 
+            const userResponse = await axios.get(`http://localhost:8088/api/users/by-credential/${credentialId}`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+
+            const realUserId = userResponse.data.id;
+            
+            if (realUserId) {
+                localStorage.setItem("userId", realUserId);
+                console.log("User ID corect salvat:", realUserId);
+            }
+            const role = decoded.role || "CLIENT";
             if (role === "ADMIN") {
                 navigate("/admin-dashboard");
             } else {
@@ -41,10 +47,11 @@ function Login() {
             }
 
         } catch (err) {
+            console.error("Login error:", err);
             if (err.response && err.response.status === 401) {
                 setError("Invalid username or password");
             } else {
-                setError("Server error. Please try again.");
+                setError("Login failed. Check console.");
             }
         } finally {
             setLoading(false);

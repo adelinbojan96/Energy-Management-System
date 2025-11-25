@@ -11,7 +11,7 @@ public class CredentialDetailsDTO {
     private String password;
 
     @NotBlank(message = "Role is required")
-    private String role; // e.g. "ADMIN" or "CLIENT"
+    private String role;
 
     public CredentialDetailsDTO() {}
 

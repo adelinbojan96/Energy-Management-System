@@ -4,7 +4,7 @@ import com.example.demo.dtos.DeviceDTO;
 import com.example.demo.dtos.DeviceDetailsDTO;
 import com.example.demo.services.DeviceService;
 import com.example.demo.dtos.SyncEventDTO;
-import com.example.demo.entities.Device; // Import necesar pentru entitatea returnată
+import com.example.demo.entities.Device;
 import jakarta.validation.Valid;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Value;

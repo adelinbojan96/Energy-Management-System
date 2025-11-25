@@ -20,6 +20,8 @@ The platform is composed of the following components:
 | **Device Microservice** | Manages energy metering devices and their association with users | 8082 |
 | **Traefik** | Reverse proxy and load balancer for internal routing between services | 80, 8080 (dashboard) |
 | **PostgreSQL Databases** | Independent databases for Auth, User, and Device services | 5432–5434 |
+| **RabbitMQ** | **Message Broker** for asynchronous communication (Assignment 2) | 5672 |
+| **Monitoring Microservice** | Consumes measurement data and aggregates hourly consumption | 8084 |
 
 All services communicate via REST APIs and are deployed on a shared Docker network.
 
@@ -35,6 +37,7 @@ All services communicate via REST APIs and are deployed on a shared Docker netwo
 ### Client Role
 - Log in using secure JWT authentication.
 - View devices assigned to their account.
+- **View energy consumption data on charts (Assignment 2).**
 
 ---
 
@@ -46,52 +49,26 @@ All services communicate via REST APIs and are deployed on a shared Docker netwo
 - Spring Web and Spring Security
 - Spring Data JPA (PostgreSQL)
 - JWT (JSON Web Token) Authentication
+- **Spring AMQP (RabbitMQ) for asynchronous messaging**
 - Springdoc OpenAPI for Swagger documentation
 
 ### Frontend
 - React.js (Vite)
 - Axios for API communication
 - Role-based routing (Admin and Client)
+- **Recharts for data visualization**
 
 ### Infrastructure
 - Docker and Docker Compose
 - Traefik (Reverse Proxy and Load Balancer)
+- **RabbitMQ (Message Broker)**
 - PostgreSQL Databases
 
 ---
 
-## REST API Overview
-
-### Authentication Service (`:8083`)
-| Method | Endpoint | Description |
-|---------|-----------|-------------|
-| `POST` | `/auth/register` | Register a new user credential |
-| `POST` | `/auth/login` | Authenticate user and return JWT token |
-| `DELETE` | `/auth/credentials/{id}` | Delete a credential by ID |
-
-### User Service (`:8081`)
-| Method | Endpoint | Description |
-|---------|-----------|-------------|
-| `GET` | `/users` | Retrieve all users |
-| `GET` | `/users/{id}` | Retrieve a user by ID |
-| `POST` | `/users` | Create a new user |
-| `PUT` | `/users/{id}` | Update user information |
-| `DELETE` | `/users/{id}` | Delete a user |
-
-### Device Service (`:8082`)
-| Method | Endpoint | Description |
-|---------|-----------|-------------|
-| `GET` | `/device` | Retrieve all devices |
-| `GET` | `/device/{id}` | Retrieve a device by ID |
-| `POST` | `/device` | Create a new device |
-| `PUT` | `/device/assign?deviceId=&userId=` | Assign a device to a user |
-| `DELETE` | `/device/{id}` | Delete a device |
+##  Deployment and Execution
 
 ### Prerequisites
 - Docker
 - Docker Compose
-- Node.js and Maven (only required if building manually)
-
----
-
-![Untitled diagram-2025-10-28-212446.png](../../../../Downloads/Untitled%20diagram-2025-10-28-212446.png)
+- Maven (Required for building Java microservices)

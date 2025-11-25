@@ -16,7 +16,7 @@ public class Simulator {
 
 
     public static void main(String[] args) {
-        System.out.println("--- Energy Data Simulator Started ---");
+        System.out.println("Energy Data Simulator Started");
 
         try {
             Properties props = new Properties();
@@ -76,7 +76,7 @@ public class Simulator {
 
                     channel.basicPublish(exchangeName, routingKeyData, null, json.getBytes());
                     
-                    System.out.println(" [x] Sent at " + LocalDateTime.now() + ": " + json);
+                    System.out.println(" Sent at " + LocalDateTime.now() + ": " + json);
                     TimeUnit.SECONDS.sleep(INTERVAL_SECONDS); 
                 }
             }
