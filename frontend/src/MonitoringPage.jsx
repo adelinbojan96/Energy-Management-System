@@ -64,7 +64,6 @@ const MonitoringPage = () => {
                 if (err.response.status === 404) {
                     setError("No data found for this date.");
                 } else {
-                    // Aici vedeai eroarea 400
                     setError(`Server Error: ${err.response.status} - ${err.response.data.message || 'Unknown'}`);
                 }
             } else {
