@@ -8,19 +8,34 @@ const Chat = () => {
     const [messages, setMessages] = useState([]);
     const [input, setInput] = useState("");
     const [connected, setConnected] = useState(false);
+    const [isTyping, setIsTyping] = useState(false);
     const stompClientRef = useRef(null);
     const messagesEndRef = useRef(null);
 
     const getUserId = () => localStorage.getItem("userId") || "Anonymous";
     
     useEffect(() => {
-        if (isOpen && !connected) {
+        if (isOpen) {
             connect();
-        }
+        } 
+
+        return () => {
+            if (stompClientRef.current && stompClientRef.current.connected) {
+                console.log("Cleaning up WebSocket connection...");
+                stompClientRef.current.disconnect();
+            }
+        };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isOpen]); 
+
+    useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-    }, [messages, isOpen]);
+    }, [messages, isTyping]);
 
     const connect = () => {
+        if (stompClientRef.current && stompClientRef.current.connected) return;
+
+        console.log("Attempting to connect...");
         const socket = new SockJS("http://localhost:8088/ws");
         const client = Stomp.over(socket);
         
@@ -28,16 +43,21 @@ const Chat = () => {
 
         client.connect({}, (frame) => {
             setConnected(true);
-            console.log("Connected to Chat: " + frame);
+            console.log("✅ Connected to Chat");
 
-            client.subscribe("/user/queue/messages", (msg) => {
-                const receivedMessage = JSON.parse(msg.body);
-                addMessage(receivedMessage);
+            const userId = getUserId();
+            client.subscribe(`/topic/${userId}`, (msg) => {
+                const receivedMessage = JSON.parse(msg.body);                
+                setIsTyping(true);
+
+                setTimeout(() => {
+                    setIsTyping(false);
+                    addMessage(receivedMessage);
+                }, 1000);
             });
-            
 
         }, (error) => {
-            console.error("Chat Error:", error);
+            console.error("Chat Connection Error:", error);
             setConnected(false);
         });
 
@@ -49,7 +69,7 @@ const Chat = () => {
     };
 
     const sendMessage = () => {
-        if (input.trim() && stompClientRef.current) {
+        if (input.trim() && stompClientRef.current && connected) {
             const userId = getUserId();
             const messagePayload = {
                 senderId: userId,
@@ -57,10 +77,13 @@ const Chat = () => {
                 type: "CHAT"
             };
 
+            console.log("📤 Sending:", messagePayload);
             stompClientRef.current.send("/app/chat", {}, JSON.stringify(messagePayload));
             
             addMessage({ ...messagePayload, isSelf: true });
             setInput("");
+        } else {
+            console.warn("Cannot send: Disconnected or empty input");
         }
     };
 
@@ -88,6 +111,7 @@ const Chat = () => {
                         {messages.length === 0 && (
                             <div className="chat-placeholder">How can we help?</div>
                         )}
+                        
                         {messages.map((msg, idx) => (
                             <div 
                                 key={idx} 
@@ -97,6 +121,15 @@ const Chat = () => {
                                 <div className="message-sender">{msg.isSelf ? "You" : msg.senderId}</div>
                             </div>
                         ))}
+
+                        {isTyping && (
+                            <div className="message-bubble other typing-indicator">
+                                <span className="dot"></span>
+                                <span className="dot"></span>
+                                <span className="dot"></span>
+                            </div>
+                        )}
+
                         <div ref={messagesEndRef} />
                     </div>
 

@@ -31,7 +31,6 @@ const MonitoringPage = () => {
         const dateParam = selectedDate.split('T')[0];
 
         try {
-            // Configurăm Axios cu Token-ul
             const api = axios.create({
                 baseURL: API_BASE_URL,
                 headers: {
@@ -39,11 +38,10 @@ const MonitoringPage = () => {
                 },
             });
 
-            // 2. CORECȚIA CRITICĂ ESTE AICI:
             const response = await api.get(`/monitoring/consumption`, { 
                 params: { 
                     date: dateParam,
-                    userId: userId // <--- ACEASTĂ LINIE LIPSEA! Backend-ul o cerea, Frontend-ul nu o dădea.
+                    userId: userId 
                 }
             });
 

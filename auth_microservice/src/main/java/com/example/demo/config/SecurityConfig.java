@@ -22,7 +22,9 @@ public class SecurityConfig {
                                 "/swagger-ui.html",
                                 "/swagger-ui/**",
                                 "/webjars/**",
-                                "/favicon.ico"
+                                "/favicon.ico",
+                                "/chat/**",
+                                "/ws/**"
                         ).permitAll()
                         .anyRequest().authenticated()
                 )

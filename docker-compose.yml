@@ -32,23 +32,16 @@ services:
       - shared-network
 
   chat_microservice:
-    build: ./chat_microservice
-    container_name: chat-service
-    depends_on:
-      - rabbitmq
-    environment:
-      - SERVER_PORT=8089 
-      - SPRING_RABBITMQ_HOST=rabbitmq
-      - SPRING_RABBITMQ_PORT=5672
-      - RABBITMQ_EXCHANGE_NAME=energy_exchange
-      - RABBITMQ_QUEUE_NAME=overconsumption_queue
-    networks:
-      - shared-network
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.chat.rule=PathPrefix(`/ws`)"
-      - "traefik.http.routers.chat.entrypoints=web"
-      - "traefik.http.services.chat.loadbalancer.server.port=8089"
+      build: ./chat_microservice
+      container_name: chat-service
+      depends_on:
+        - rabbitmq
+      environment:
+        - SERVER_PORT=8089
+      ports:
+        - "8089:8089"      
+      networks:
+        - shared-network
 
   auth_microservice:
     build: ./auth_microservice
@@ -198,9 +191,10 @@ services:
       - shared-network
     labels:
       - "traefik.enable=true"
-      - 'traefik.http.routers.api-gateway.rule=PathPrefix(`/api`)'
+      - "traefik.http.routers.api-gateway.rule=PathPrefix(`/api`) || PathPrefix(`/chat`) || PathPrefix(`/ws`)"
       - "traefik.http.routers.api-gateway.entrypoints=web"
       - "traefik.http.services.api-gateway.loadbalancer.server.port=8080"
+      - "traefik.http.routers.api-gateway.priority=20"
 
   frontend:
     build: ./frontend
