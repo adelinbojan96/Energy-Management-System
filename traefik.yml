@@ -3,12 +3,13 @@ entryPoints:
     address: ":80"
 
 api:
-  insecure: true 
+  insecure: true
+  dashboard: true
 
 providers:
   docker:
     exposedByDefault: false
-    network: shared-network
+    network: shared-network  
 
 experimental:
   plugins:
@@ -18,6 +19,3 @@ experimental:
 
 log:
   level: DEBUG
-
-accessLog:
-  filePath: /var/log/traefik/access.log
