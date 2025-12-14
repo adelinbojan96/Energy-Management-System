@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
+import Chat from "./components/Chat"; 
 import "./Dashboard.css"; 
 
 function Dashboard() {
@@ -163,7 +164,6 @@ function Dashboard() {
                     Monitoring
                 </button>
             </div>
-
             {activeTab === "users" && (
                 <div className="section">
                     <div className="section-header">
@@ -312,6 +312,7 @@ function Dashboard() {
                     </div>
                 </div>
             )}
+            <Chat />
         </div>
     );
 }

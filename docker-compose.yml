@@ -5,7 +5,6 @@ services:
     image: traefik:v3.1
     container_name: traefik
     environment:
-      # CRITICAL FIX: Forces Traefik to use API 1.44 to match your Arch Host
       - TRAEFIK_PROVIDERS_DOCKER_APIVERSION=1.44
     command:
       - "--api.insecure=true"
@@ -31,6 +30,25 @@ services:
       - "15672:15672"
     networks:
       - shared-network
+
+  chat_microservice:
+    build: ./chat_microservice
+    container_name: chat-service
+    depends_on:
+      - rabbitmq
+    environment:
+      - SERVER_PORT=8089 
+      - SPRING_RABBITMQ_HOST=rabbitmq
+      - SPRING_RABBITMQ_PORT=5672
+      - RABBITMQ_EXCHANGE_NAME=energy_exchange
+      - RABBITMQ_QUEUE_NAME=overconsumption_queue
+    networks:
+      - shared-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.chat.rule=PathPrefix(`/ws`)"
+      - "traefik.http.routers.chat.entrypoints=web"
+      - "traefik.http.services.chat.loadbalancer.server.port=8089"
 
   auth_microservice:
     build: ./auth_microservice
@@ -180,7 +198,6 @@ services:
       - shared-network
     labels:
       - "traefik.enable=true"
-      # FIXED SYNTAX: Single quotes wrapping backticks
       - 'traefik.http.routers.api-gateway.rule=PathPrefix(`/api`)'
       - "traefik.http.routers.api-gateway.entrypoints=web"
       - "traefik.http.services.api-gateway.loadbalancer.server.port=8080"
@@ -192,7 +209,6 @@ services:
       - "5173:80"
     labels:
       - "traefik.enable=true"
-      # FIXED SYNTAX: Single quotes wrapping backticks
       - 'traefik.http.routers.frontend.rule=PathPrefix(`/`)'
       - "traefik.http.routers.frontend.entrypoints=web"
       - "traefik.http.routers.frontend.priority=10"

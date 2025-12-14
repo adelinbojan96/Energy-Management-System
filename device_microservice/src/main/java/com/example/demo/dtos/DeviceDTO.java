@@ -19,15 +19,18 @@ public class DeviceDTO {
 
     private String location;
 
+    private UUID userId;
+
     public DeviceDTO() {
     }
 
-    public DeviceDTO(UUID id, String name, String description, Double maxConsumption, String location) {
+    public DeviceDTO(UUID id, String name, String description, Double maxConsumption, String location, UUID userId) {
         this.id = id;
         this.name = name;
         this.description = description;
         this.maxConsumption = maxConsumption;
         this.location = location;
+        this.userId = userId;
     }
 
     public UUID getId() {
@@ -67,5 +70,13 @@ public class DeviceDTO {
 
     public void setLocation(String location) {
         this.location = location;
+    }
+    
+    public UUID getUserId() {
+        return userId;
+    }
+
+    public void setUserId(UUID userId) {
+        this.userId = userId;
     }
 }

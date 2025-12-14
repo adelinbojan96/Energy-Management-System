@@ -68,6 +68,7 @@ public class DeviceService {
         existing.setDescription(updatedDevice.getDescription());
         existing.setMaxConsumption(updatedDevice.getMaxConsumption());
         existing.setLocation(updatedDevice.getLocation());
+        existing.setUserId(updatedDevice.getUserId());
 
         deviceRepository.save(existing);
         return DeviceBuilder.toDeviceDTO(existing);

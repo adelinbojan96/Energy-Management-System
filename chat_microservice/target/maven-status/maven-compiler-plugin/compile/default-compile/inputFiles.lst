@@ -1,0 +1,6 @@
+/home/adelinbojan/Documents/WorkingEnvironment/DS_Projects/Project_1/api_microservice/src/main/java/com/example/demo/GatewayApplication.java
+/home/adelinbojan/Documents/WorkingEnvironment/DS_Projects/Project_1/api_microservice/src/main/java/com/example/demo/config/GatewayConfig.java
+/home/adelinbojan/Documents/WorkingEnvironment/DS_Projects/Project_1/api_microservice/src/main/java/com/example/demo/config/SecurityConfig.java
+/home/adelinbojan/Documents/WorkingEnvironment/DS_Projects/Project_1/api_microservice/src/main/java/com/example/demo/config/SwaggerConfig.java
+/home/adelinbojan/Documents/WorkingEnvironment/DS_Projects/Project_1/api_microservice/src/main/java/com/example/demo/filter/JwtAuthenticationFilter.java
+/home/adelinbojan/Documents/WorkingEnvironment/DS_Projects/Project_1/api_microservice/src/main/java/com/example/demo/security/JwtUtil.java

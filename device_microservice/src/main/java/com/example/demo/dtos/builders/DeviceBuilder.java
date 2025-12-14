@@ -15,7 +15,8 @@ public class DeviceBuilder {
                 device.getName(),
                 device.getDescription(),
                 device.getMaxConsumption(),
-                device.getLocation()
+                device.getLocation(),
+                device.getUserId()
         );
     }
 
