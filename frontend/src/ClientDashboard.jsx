@@ -12,7 +12,7 @@ function ClientDashboard() {
     const navigate = useNavigate();
 
     const connectToAlerts = () => {
-        const socket = new SockJS("http://localhost:8088/ws");
+        const socket = new SockJS("http://localhost:8089/ws");
         const client = Stomp.over(socket);
         client.debug = null;
 

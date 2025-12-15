@@ -8,53 +8,96 @@ const Chat = () => {
     const [messages, setMessages] = useState([]);
     const [input, setInput] = useState("");
     const [connected, setConnected] = useState(false);
-    const [isTyping, setIsTyping] = useState(false);
+    
+    // ADMIN STATE
+    const [replyToUser, setReplyToUser] = useState(null); 
+    const [replyToName, setReplyToName] = useState(null); 
+    
+    // USER IDENTITY STATE
+    const [currentUser, setCurrentUser] = useState({ 
+        id: "Anonymous", 
+        name: "Anonymous", 
+        role: "CLIENT" 
+    });
+
     const stompClientRef = useRef(null);
     const messagesEndRef = useRef(null);
 
-    const getUserId = () => localStorage.getItem("userId") || "Anonymous";
-    
+    useEffect(() => {
+        const token = localStorage.getItem("token");
+        if (token) {
+            try {
+                // JWT decoding
+                const base64Url = token.split('.')[1];
+                const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+                const jsonPayload = decodeURIComponent(window.atob(base64).split('').map(function(c) {
+                    return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+                }).join(''));
+                
+                const decoded = JSON.parse(jsonPayload);
+                const username = decoded.sub || decoded.username || "Unknown";
+                
+                let role = "CLIENT";
+                if ((decoded.roles && decoded.roles.includes("ADMIN")) || 
+                    (decoded.role && decoded.role === "ADMIN") || 
+                    username.toLowerCase() === "admin") {
+                    role = "ADMIN";
+                }
+
+                const storedId = localStorage.getItem("userId") || decoded.id || username; 
+                
+                setCurrentUser({ 
+                    id: storedId, 
+                    name: username, 
+                    role: role 
+                });
+
+            } catch (e) {
+                console.error("Token decode error", e);
+            }
+        }
+    }, []);
+
     useEffect(() => {
         if (isOpen) {
             connect();
         } 
-
         return () => {
             if (stompClientRef.current && stompClientRef.current.connected) {
-                console.log("Cleaning up WebSocket connection...");
                 stompClientRef.current.disconnect();
             }
         };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+        // eslint-disable-next-line
     }, [isOpen]); 
 
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-    }, [messages, isTyping]);
+    }, [messages]);
 
     const connect = () => {
         if (stompClientRef.current && stompClientRef.current.connected) return;
 
-        console.log("Attempting to connect...");
-        const socket = new SockJS("http://localhost:8088/ws");
+        const socket = new SockJS("http://localhost:8089/ws");
         const client = Stomp.over(socket);
-        
-        client.debug = null;
+        client.debug = null; 
 
         client.connect({}, (frame) => {
             setConnected(true);
-            console.log("✅ Connected to Chat");
+            console.log(`✅ Connected as ${currentUser.role}`);
 
-            const userId = getUserId();
-            client.subscribe(`/topic/${userId}`, (msg) => {
-                const receivedMessage = JSON.parse(msg.body);                
-                setIsTyping(true);
-
-                setTimeout(() => {
-                    setIsTyping(false);
-                    addMessage(receivedMessage);
-                }, 1000);
-            });
+            if (currentUser.role === "ADMIN") {
+                client.subscribe('/topic/admin', (msg) => {
+                    const body = JSON.parse(msg.body);
+                    setReplyToUser(body.senderId);
+                    setReplyToName(body.senderName || body.senderId); 
+                    addMessage(body);
+                });
+            } else {
+                client.subscribe(`/topic/${currentUser.id}`, (msg) => {
+                    const body = JSON.parse(msg.body);
+                    addMessage(body);
+                });
+            }
 
         }, (error) => {
             console.error("Chat Connection Error:", error);
@@ -69,22 +112,32 @@ const Chat = () => {
     };
 
     const sendMessage = () => {
-        if (input.trim() && stompClientRef.current && connected) {
-            const userId = getUserId();
-            const messagePayload = {
-                senderId: userId,
-                content: input,
-                type: "CHAT"
-            };
+        if (!input.trim() || !stompClientRef.current || !connected) return;
 
-            console.log("📤 Sending:", messagePayload);
-            stompClientRef.current.send("/app/chat", {}, JSON.stringify(messagePayload));
-            
-            addMessage({ ...messagePayload, isSelf: true });
-            setInput("");
+        const effectiveSenderId = currentUser.role === "ADMIN" ? "admin" : currentUser.id;
+
+        let payload = {
+            senderId: effectiveSenderId, 
+            senderName: currentUser.name,
+            content: input,
+            type: "CHAT"
+        };
+
+        if (currentUser.role === "ADMIN") {
+            if (!replyToUser) {
+                alert("Wait for a user to message you first!");
+                return;
+            }
+            payload.recipientId = replyToUser; 
         } else {
-            console.warn("Cannot send: Disconnected or empty input");
+            payload.recipientId = "admin"; 
         }
+
+        console.log("Sending:", payload);
+        stompClientRef.current.send("/app/chat", {}, JSON.stringify(payload));
+        
+        addMessage({ ...payload, isSelf: true });
+        setInput("");
     };
 
     const handleKeyPress = (e) => {
@@ -97,39 +150,43 @@ const Chat = () => {
                 className={`chat-toggle-btn ${isOpen ? "open" : ""}`} 
                 onClick={() => setIsOpen(!isOpen)}
             >
-                {isOpen ? "✖" : "💬 Support"}
+                {isOpen ? "✖" : "Support"}
             </button>
 
             {isOpen && (
                 <div className="chat-window">
                     <div className="chat-header">
-                        <h3>Live Support</h3>
+                        <div className="header-info">
+                            <h3>{currentUser.role === "ADMIN" ? "Admin Panel" : "Live Support"}</h3>
+                            {currentUser.role === "ADMIN" && (
+                                <span className="replying-to">
+                                    {replyToName ? `Replying to: ${replyToName}` : "(Waiting...)"}
+                                </span>
+                            )}
+                        </div>
                         <span className={`status-dot ${connected ? "online" : "offline"}`}></span>
                     </div>
                     
                     <div className="chat-messages">
                         {messages.length === 0 && (
-                            <div className="chat-placeholder">How can we help?</div>
+                            <div className="chat-placeholder">
+                                {currentUser.role === "ADMIN" ? "No active chats." : "How can we help?"}
+                            </div>
                         )}
                         
                         {messages.map((msg, idx) => (
                             <div 
                                 key={idx} 
-                                className={`message-bubble ${msg.isSelf || msg.senderId === getUserId() ? "self" : "other"}`}
+                                className={`message-bubble ${msg.isSelf || (msg.senderId === "admin" && currentUser.role === "ADMIN") || (msg.senderId === currentUser.id && currentUser.role !== "ADMIN") ? "self" : "other"}`}
                             >
+                                {!msg.isSelf && (
+                                    <div className="message-sender">
+                                        {msg.senderName || (msg.senderId === "admin" ? "Support" : "User")}
+                                    </div>
+                                )}
                                 <div className="message-content">{msg.content}</div>
-                                <div className="message-sender">{msg.isSelf ? "You" : msg.senderId}</div>
                             </div>
                         ))}
-
-                        {isTyping && (
-                            <div className="message-bubble other typing-indicator">
-                                <span className="dot"></span>
-                                <span className="dot"></span>
-                                <span className="dot"></span>
-                            </div>
-                        )}
-
                         <div ref={messagesEndRef} />
                     </div>
 
@@ -138,7 +195,7 @@ const Chat = () => {
                             value={input}
                             onChange={(e) => setInput(e.target.value)}
                             onKeyPress={handleKeyPress}
-                            placeholder="Type a message..."
+                            placeholder={currentUser.role === "ADMIN" ? `Reply to ${replyToName || '...'}` : "Type a message..."}
                             disabled={!connected}
                         />
                         <button onClick={sendMessage} disabled={!connected}>

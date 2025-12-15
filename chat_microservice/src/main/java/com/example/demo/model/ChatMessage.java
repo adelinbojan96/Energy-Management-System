@@ -1,6 +1,6 @@
 package com.example.demo.model;
 
-import lombok.*; 
+import lombok.*;
 
 @Getter
 @Setter
@@ -8,7 +8,9 @@ import lombok.*;
 @NoArgsConstructor
 @Builder
 public class ChatMessage {
-    private String senderId; // user ID or "Admin"
-    private String content;  // text
-    private String type;     // "CHAT" or "TYPING"
+    private String senderId;   
+    private String senderName;  
+    private String recipientId; 
+    private String content;     
+    private String type;        
 }
