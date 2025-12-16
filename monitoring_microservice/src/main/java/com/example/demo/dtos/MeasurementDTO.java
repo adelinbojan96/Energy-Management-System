@@ -5,8 +5,11 @@ import java.util.UUID;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import com.fasterxml.jackson.databind.PropertyNamingStrategies;
+import com.fasterxml.jackson.databind.annotation.JsonNaming;
 
 @com.fasterxml.jackson.annotation.JsonIgnoreProperties(ignoreUnknown = true)
+@JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
 public class MeasurementDTO {
 
     private Long timestamp;

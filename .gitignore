@@ -1,1 +1,18 @@
+ollama_data/
+
+# IDE and Build directories
+.idea/
+target/
+**/target/
+**/target/*.jar
+build/
+
+# Maven/IDE Plugin Caches (fixes your plugins-storage issue)
 plugins-storage/
+.m2/
+
+# Logs and OS files
+*.log
+*.err
+.DS_Store
+Thumbs.db

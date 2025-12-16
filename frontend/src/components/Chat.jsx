@@ -9,6 +9,8 @@ const Chat = () => {
     const [input, setInput] = useState("");
     const [connected, setConnected] = useState(false);
     
+    const [isTyping, setIsTyping] = useState(false);
+
     // ADMIN STATE
     const [replyToUser, setReplyToUser] = useState(null); 
     const [replyToName, setReplyToName] = useState(null); 
@@ -27,7 +29,6 @@ const Chat = () => {
         const token = localStorage.getItem("token");
         if (token) {
             try {
-                // JWT decoding
                 const base64Url = token.split('.')[1];
                 const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
                 const jsonPayload = decodeURIComponent(window.atob(base64).split('').map(function(c) {
@@ -72,7 +73,7 @@ const Chat = () => {
 
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-    }, [messages]);
+    }, [messages, isTyping]); 
 
     const connect = () => {
         if (stompClientRef.current && stompClientRef.current.connected) return;
@@ -83,32 +84,38 @@ const Chat = () => {
 
         client.connect({}, (frame) => {
             setConnected(true);
-            console.log(`✅ Connected as ${currentUser.role}`);
+            console.log(`Connected as ${currentUser.role}`);
+
+            const onMessageReceived = (msg) => {
+                const body = JSON.parse(msg.body);
+                setIsTyping(false);
+                addMessage(body);
+            };
 
             if (currentUser.role === "ADMIN") {
                 client.subscribe('/topic/admin', (msg) => {
                     const body = JSON.parse(msg.body);
                     setReplyToUser(body.senderId);
                     setReplyToName(body.senderName || body.senderId); 
-                    addMessage(body);
+                    onMessageReceived(msg);
                 });
             } else {
-                client.subscribe(`/topic/${currentUser.id}`, (msg) => {
-                    const body = JSON.parse(msg.body);
-                    addMessage(body);
-                });
+                client.subscribe(`/topic/${currentUser.id}`, onMessageReceived);
             }
 
         }, (error) => {
             console.error("Chat Connection Error:", error);
             setConnected(false);
+            setIsTyping(false); 
         });
 
         stompClientRef.current = client;
     };
 
     const addMessage = (msg) => {
-        setMessages((prev) => [...prev, msg]);
+        setMessages((prev) => {
+            return [...prev, msg];
+        });
     };
 
     const sendMessage = () => {
@@ -133,9 +140,12 @@ const Chat = () => {
             payload.recipientId = "admin"; 
         }
 
-        console.log("Sending:", payload);
+        // START LOADING ANIMATION
+        setIsTyping(true);
+
         stompClientRef.current.send("/app/chat", {}, JSON.stringify(payload));
         
+        // Optimistically add our own message
         addMessage({ ...payload, isSelf: true });
         setInput("");
     };
@@ -187,6 +197,16 @@ const Chat = () => {
                                 <div className="message-content">{msg.content}</div>
                             </div>
                         ))}
+
+                        {/* TYPING INDICATOR */}
+                        {isTyping && (
+                            <div className="message-bubble other typing-indicator">
+                                <div className="dot"></div>
+                                <div className="dot"></div>
+                                <div className="dot"></div>
+                            </div>
+                        )}
+
                         <div ref={messagesEndRef} />
                     </div>
 

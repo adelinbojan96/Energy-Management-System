@@ -6,6 +6,13 @@ import org.springframework.stereotype.Service;
 @Service
 public class CustomerSupportService {
 
+ 
+    private final AiService aiService;
+
+    public CustomerSupportService(AiService aiService) {
+        this.aiService = aiService;
+    }
+
     public ChatMessage processMessage(ChatMessage message) {
         String input = message.getContent() != null ? message.getContent().toLowerCase().trim() : "";
         String keyword = detectKeyword(input);
@@ -22,7 +29,18 @@ public class CustomerSupportService {
             case "password" -> responseText = "You can reset your password by clicking 'Forgot Password' on the login screen.";
             case "hours" -> responseText = "Our support team is available from 9:00 AM to 5:00 PM (EET). Automated support is 24/7.";
             case "human" -> responseText = "I am forwarding this conversation to a human administrator. They will join shortly.";
-            default -> responseText = "I'm not sure about that. I will forward your message to the administrator.";
+            
+            case "ai" -> {
+                String cleanPrompt = message.getContent().replaceAll("(?i)AI", "").trim();
+                if(cleanPrompt.isEmpty()) {
+                    responseText = "Yes? I am listening. What do you need to know?";
+                } else {
+             
+                    responseText = aiService.callGpt(cleanPrompt);
+                }
+            }
+            
+            default -> responseText = "I'm not sure about that. Try starting your sentence with 'AI' to ask the assistant, or I can forward you to an admin.";
         }
 
         return new ChatMessage("System", "System", message.getSenderId(), responseText, "CHAT");
@@ -39,6 +57,9 @@ public class CustomerSupportService {
         if (input.contains("password") || input.contains("login")) return "password";
         if (input.contains("hours") || input.contains("time")) return "hours";
         if (input.contains("human") || input.contains("admin") || input.contains("support")) return "human";
+        
+        if (input.startsWith("ai ") || input.equals("ai")) return "ai";
+        
         return "unknown";
     }
 }

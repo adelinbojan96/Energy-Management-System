@@ -10,6 +10,7 @@ import com.example.demo.repositories.HourlyConsumptionRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,6 +21,7 @@ import java.time.LocalTime;
 import java.time.temporal.ChronoUnit;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -31,10 +33,14 @@ public class MonitoringService {
 
     private final HourlyConsumptionRepository consumptionRepo;
     private final DeviceUserMappingRepository mappingRepo;
+    private final RabbitTemplate rabbitTemplate; 
 
-    public MonitoringService(HourlyConsumptionRepository consumptionRepo, DeviceUserMappingRepository mappingRepo) {
+    public MonitoringService(HourlyConsumptionRepository consumptionRepo, 
+                             DeviceUserMappingRepository mappingRepo,
+                             RabbitTemplate rabbitTemplate) {
         this.consumptionRepo = consumptionRepo;
         this.mappingRepo = mappingRepo;
+        this.rabbitTemplate = rabbitTemplate;
     }
 
     @RabbitListener(queues = "${rabbitmq.queue.data}")
@@ -47,26 +53,61 @@ public class MonitoringService {
             return;
         }
 
-        LOGGER.debug("Received measurement for device {}: {}", message.getDeviceId(), message.getValue());
-
         LocalDateTime truncatedTimestamp = actualTimestamp.truncatedTo(ChronoUnit.HOURS);
         UUID deviceId = message.getDeviceId();
 
-        Optional<HourlyConsumption> existingRecord = consumptionRepo.findByDeviceIdAndTimestamp(deviceId, truncatedTimestamp);
+        List<HourlyConsumption> existingRecords = consumptionRepo.findByDeviceIdAndTimestamp(deviceId, truncatedTimestamp);
+        
+        HourlyConsumption record;
 
-        if (existingRecord.isPresent()) {
-            HourlyConsumption record = existingRecord.get();
-            record.setTotalConsumption(record.getTotalConsumption() + message.getValue());
-            consumptionRepo.save(record);
-            LOGGER.info("Updated consumption for device {}. Hour: {}, New Total: {}", deviceId, truncatedTimestamp, record.getTotalConsumption());
-            
+        if (existingRecords.isEmpty()) {
+            record = new HourlyConsumption(deviceId, truncatedTimestamp, 0.0);
         } else {
-            HourlyConsumption newRecord = new HourlyConsumption(deviceId, truncatedTimestamp, message.getValue());
-            consumptionRepo.save(newRecord);
-            LOGGER.info("Created new consumption record for device {}. Hour: {}", deviceId, truncatedTimestamp);
+            record = existingRecords.get(0);
+            
+            if (existingRecords.size() > 1) {
+                LOGGER.warn("Duplicate consumption records detected for Device {} at {}. Using first record.", deviceId, truncatedTimestamp);
+            }
         }
+        
+        double newTotal = record.getTotalConsumption() + message.getValue();
+        record.setTotalConsumption(newTotal);
+        
+        consumptionRepo.save(record);
+
+        LOGGER.debug("Updated consumption for device {}. Hour: {}, New Total: {}", deviceId, truncatedTimestamp, newTotal);
+
+        checkAndAlert(deviceId, newTotal, truncatedTimestamp);
     }
 
+    private void checkAndAlert(UUID deviceId, double currentConsumption, LocalDateTime timestamp) {
+        Optional<DeviceUserMapping> mappingOpt = mappingRepo.findAll().stream()
+                .filter(m -> m.getDeviceId().equals(deviceId))
+                .findFirst();
+
+        Double limit = null;
+        if (mappingOpt.isPresent()) {
+            limit = mappingOpt.get().getMaxConsumption();
+        }
+        
+        if (limit == null) {
+            limit = 10.0;
+        }
+        
+        LOGGER.info("Checking Alert: Device={}, Current Consumption={}, Effective Limit={}", deviceId, currentConsumption, limit);
+
+        if (currentConsumption > limit) {
+            String alertMessage = String.format(
+                "Overconsumption Alert! Device %s exceeded limit %.2f at %s. Current: %.2f (Limit: %.2f)", 
+                deviceId, limit, timestamp, currentConsumption, limit
+            );
+            
+            LOGGER.warn("Sending Alert: {}", alertMessage);
+            
+            rabbitTemplate.convertAndSend("overconsumption_queue", alertMessage);
+        }
+    }
+    
     @RabbitListener(queues = "${rabbitmq.queue.sync.monitoring}")
     public void consumeSyncEvent(SyncEventDTO event) {
         LOGGER.info("Received sync event payload: {}", event);
@@ -75,7 +116,6 @@ public class MonitoringService {
             LOGGER.warn("Received sync event with null Device ID. Dropping.");
             return;
         }
-
         if (event.getEventType() == null) {
              LOGGER.warn("Received sync event with null Event Type. Dropping.");
              return;
@@ -87,11 +127,9 @@ public class MonitoringService {
             case "DEVICE_UPDATED":
                 handleUpsertDevice(event);
                 break;
-
             case "DEVICE_DELETED":
                 handleDeleteDevice(event.getDeviceId());
                 break;
-
             default:
                 LOGGER.debug("Ignored event type: {}", event.getEventType());
                 break;
@@ -104,10 +142,6 @@ public class MonitoringService {
             return;
         }
         
-        try {
-        } catch (Exception e) {
-        }
-
         DeviceUserMapping mapping = new DeviceUserMapping();
         mapping.setDeviceId(event.getDeviceId());
         mapping.setUserId(event.getUserId());
@@ -143,7 +177,12 @@ public class MonitoringService {
 
         List<UUID> deviceIds = mappings.stream()
                 .map(DeviceUserMapping::getDeviceId)
+                .filter(Objects::nonNull)
                 .collect(Collectors.toList());
+
+        if (deviceIds.isEmpty()) {
+            return List.of();
+        }
 
         LocalDateTime startOfDay = date.atStartOfDay();
         LocalDateTime endOfDay = date.atTime(LocalTime.MAX);

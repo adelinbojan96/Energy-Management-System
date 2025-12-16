@@ -66,6 +66,21 @@ All services communicate via REST APIs and are deployed on a shared Docker netwo
 
 ---
 
+### Run device simulator
+
+#### Commands:
+    cd device_simulator
+    mvn clean install exec:java -Dexec.mainClass="org.example.Simulator" -Dexec.args="--device.id=<YOUR_DEVICE_UUID>"
+
+last device uuid = d56fc032-6c3d-463a-ad63-2da949a87425
+
+---
+
+### Testing the alert system using a local alert
+
+#### Command
+    curl -X GET http://localhost:8089/chat/trigger-alert
+
 ##  Deployment and Execution
 
 ### Prerequisites

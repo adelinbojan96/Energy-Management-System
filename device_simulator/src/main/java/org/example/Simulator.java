@@ -53,7 +53,7 @@ public class Simulator {
                 Random random = new Random();
                 double currentConsumption = 5.0; 
                 
-                final long INTERVAL_SECONDS = 600; 
+                final long INTERVAL_SECONDS = 5;
 
                 System.out.println("Sending data for Device ID: " + deviceId);
                 System.out.println("Publishing to Exchange: " + exchangeName + ", Key: " + routingKeyData);

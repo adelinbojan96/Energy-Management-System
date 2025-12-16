@@ -12,7 +12,7 @@ import java.util.UUID;
 @Repository
 public interface HourlyConsumptionRepository extends JpaRepository<HourlyConsumption, UUID> {
 
-    Optional<HourlyConsumption> findByDeviceIdAndTimestamp(UUID deviceId, LocalDateTime timestamp);
+List<HourlyConsumption> findByDeviceIdAndTimestamp(UUID deviceId, LocalDateTime timestamp);
 
-    List<HourlyConsumption> findByDeviceIdInAndTimestampBetween(List<UUID> deviceIds, LocalDateTime start, LocalDateTime end);
+List<HourlyConsumption> findByDeviceIdInAndTimestampBetween(List<UUID> deviceIds, LocalDateTime start, LocalDateTime end);
 }

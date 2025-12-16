@@ -32,16 +32,16 @@ services:
       - shared-network
 
   chat_microservice:
-      build: ./chat_microservice
-      container_name: chat-service
-      depends_on:
-        - rabbitmq
-      environment:
-        - SERVER_PORT=8089
-      ports:
-        - "8089:8089"      
-      networks:
-        - shared-network
+    build: ./chat_microservice
+    container_name: chat-service
+    depends_on:
+      - rabbitmq
+    environment:
+      - SERVER_PORT=8089
+    ports:
+      - "8089:8089"
+    networks:
+      - shared-network
 
   auth_microservice:
     build: ./auth_microservice
@@ -140,25 +140,52 @@ services:
     networks:
       - shared-network
 
-  monitoring_microservice:
+  load_balancing_service:
+    build: ./load_balancing_service
+    container_name: load-balancer-service
+    depends_on:
+      - rabbitmq
+    environment:
+      - SERVER_PORT=8090
+      - SPRING_RABBITMQ_HOST=rabbitmq
+    networks:
+      - shared-network
+
+  monitoring_service_1:
     build: ./monitoring_microservice
-    container_name: monitoring-service
+    container_name: monitoring-replica-1
     depends_on:
       - monitoring_db
       - rabbitmq
-    entrypoint: ["java", "-Dserver.port=8084", "-jar", "app.jar"]
     environment:
+      - SERVER_PORT=8084
       - SPRING_DATASOURCE_URL=jdbc:postgresql://monitoring_db:5432/monitoring
       - SPRING_DATASOURCE_USERNAME=root
       - SPRING_DATASOURCE_PASSWORD=password
       - SPRING_JPA_HIBERNATE_DDL_AUTO=update
       - SPRING_RABBITMQ_HOST=rabbitmq
-      - SPRING_RABBITMQ_PORT=5672
+      - RABBITMQ_QUEUE_DATA=monitoring_queue_1 
       - RABBITMQ_EXCHANGE_NAME=sync-exchange
-      - RABBITMQ_QUEUE_DATA=device-data-queue
-      - RABBITMQ_QUEUE_SYNC=monitoring-sync-queue
-      - RABBITMQ_ROUTING_KEY_SYNC_PATTERN=device.*
-      - RABBITMQ_ROUTING_KEY_DATA=device.data
+      - RABBITMQ_QUEUE_SYNC=monitoring-sync-queue-1
+    networks:
+      - shared-network
+
+  monitoring_service_2:
+    build: ./monitoring_microservice
+    container_name: monitoring-replica-2
+    depends_on:
+      - monitoring_db
+      - rabbitmq
+    environment:
+      - SERVER_PORT=8085
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://monitoring_db:5432/monitoring
+      - SPRING_DATASOURCE_USERNAME=root
+      - SPRING_DATASOURCE_PASSWORD=password
+      - SPRING_JPA_HIBERNATE_DDL_AUTO=update
+      - SPRING_RABBITMQ_HOST=rabbitmq
+      - RABBITMQ_QUEUE_DATA=monitoring_queue_2
+      - RABBITMQ_EXCHANGE_NAME=sync-exchange
+      - RABBITMQ_QUEUE_SYNC=monitoring-sync-queue-2
     networks:
       - shared-network
 
@@ -184,7 +211,7 @@ services:
       - auth_microservice
       - user_microservice
       - device_microservice
-      - monitoring_microservice 
+      - monitoring_service_1
     environment:
       - SPRING_PROFILES_ACTIVE=docker
     networks:
@@ -209,6 +236,18 @@ services:
       - "traefik.http.services.frontend.loadbalancer.server.port=80"
     networks:
       - shared-network
+    
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama
+    command: serve
+    volumes:
+      - ./ollama_data:/root/.ollama
+    ports:
+      - "11434:11434"
+    networks:
+      - shared-network
+    restart: always
 
 networks:
   shared-network:
