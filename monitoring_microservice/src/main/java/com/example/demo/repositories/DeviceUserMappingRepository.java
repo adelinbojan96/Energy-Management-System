@@ -12,5 +12,7 @@ public interface DeviceUserMappingRepository extends JpaRepository<DeviceUserMap
 
     List<DeviceUserMapping> findByUserId(UUID userId);
 
+    List<DeviceUserMapping> findByDeviceId(UUID deviceId);
+
     void deleteByDeviceId(UUID deviceId);
 }

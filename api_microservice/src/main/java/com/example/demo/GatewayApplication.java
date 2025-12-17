@@ -56,7 +56,8 @@ public class GatewayApplication {
                         .filters(f -> f.rewritePath("/api/auth/(?<segment>.*)", "/auth/${segment}")).uri("http://auth-service:8083"))
                 .route("user_microservice", r -> r.path("/api/users/**").filters(f -> f.stripPrefix(1)).uri("http://user-service:8081"))
                 .route("device_microservice", r -> r.path("/api/device/**").filters(f -> f.stripPrefix(1)).uri("http://device-service:8082"))
-                .route("monitoring_microservice", r -> r.path("/api/monitoring/**").uri("http://monitoring-service:8084"))
+                .route("monitoring_microservice", r -> r.path("/api/monitoring/**")
+                        .uri("http://load-balancer-service:8090"))
 
                 .route("chat_rest", r -> r.path("/chat/**").uri("http://chat-service:8089"))
                 

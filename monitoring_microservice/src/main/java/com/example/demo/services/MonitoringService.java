@@ -80,30 +80,25 @@ public class MonitoringService {
         checkAndAlert(deviceId, newTotal, truncatedTimestamp);
     }
 
-    private void checkAndAlert(UUID deviceId, double currentConsumption, LocalDateTime timestamp) {
-        Optional<DeviceUserMapping> mappingOpt = mappingRepo.findAll().stream()
-                .filter(m -> m.getDeviceId().equals(deviceId))
-                .findFirst();
+    public void checkAndAlert(UUID deviceId, double currentConsumption, LocalDateTime timestamp) {
+        List<DeviceUserMapping> mappings = mappingRepo.findByDeviceId(deviceId);
 
-        Double limit = null;
-        if (mappingOpt.isPresent()) {
-            limit = mappingOpt.get().getMaxConsumption();
-        }
-        
-        if (limit == null) {
-            limit = 10.0;
-        }
-        
+        Double limit = mappings.stream()
+                .map(DeviceUserMapping::getMaxConsumption)
+                .filter(Objects::nonNull)
+                .findFirst()
+                .orElse(10.0);
+
         LOGGER.info("Checking Alert: Device={}, Current Consumption={}, Effective Limit={}", deviceId, currentConsumption, limit);
 
         if (currentConsumption > limit) {
             String alertMessage = String.format(
-                "Overconsumption Alert! Device %s exceeded limit %.2f at %s. Current: %.2f (Limit: %.2f)", 
+                "Overconsumption Alert! Device %s exceeded limit %.2f at %s. Current: %.2f (Limit: %.2f)",
                 deviceId, limit, timestamp, currentConsumption, limit
             );
-            
+
             LOGGER.warn("Sending Alert: {}", alertMessage);
-            
+
             rabbitTemplate.convertAndSend("overconsumption_queue", alertMessage);
         }
     }
